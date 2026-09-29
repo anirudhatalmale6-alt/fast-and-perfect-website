@@ -94,8 +94,19 @@ CLAIMS = {
     "same_crew": False,        # "same cleaners every visit"
     "supplies_included": False,
     "years_in_business": None,
-    "show_prices": False,      # rate tables + estimator dollar figures
+
+    # Pricing is gated per service, because the owner has confirmed his
+    # carpet & upholstery rates but not his residential/commercial ones.
+    "show_prices": False,         # residential + commercial (NOT confirmed)
+    "show_prices_carpet": True,   # confirmed in writing, see pricing.json
 }
+
+# Carpet & upholstery prices live in one JSON file so the owner can change
+# them without touching any HTML or rebuilding. Both the calculator and the
+# published rate table read from it.
+PRICING_PATH = os.path.join(ROOT, "site", "assets", "data", "pricing.json")
+with open(PRICING_PATH, encoding="utf-8") as _fh:
+    PRICING = json.load(_fh)
 
 # Real customer reviews only. Leave empty until the owner supplies them —
 # invented reviews breach Google and Meta policy and are grounds for a
@@ -386,7 +397,7 @@ def faq_schema(pairs):
     }
 
 
-def service_schema(name, desc, low, high, unit="visit"):
+def service_schema(name, desc, low, high, unit="visit", enabled=None):
     schema = {
         "@context": "https://schema.org",
         "@type": "Service",
@@ -396,27 +407,34 @@ def service_schema(name, desc, low, high, unit="visit"):
         "description": desc,
     }
     # A price in structured data is still a published price — Google surfaces
-    # it in search results. Gated with the rest.
-    if claim("show_prices"):
+    # it in search results. Gated per service.
+    if enabled is None:
+        enabled = claim("show_prices")
+    if enabled:
         schema["offers"] = {
             "@type": "AggregateOffer",
             "priceCurrency": "CAD",
             "lowPrice": str(low),
-            "highPrice": str(high),
-            "offerCount": "5",
         }
+        # Only claim an upper bound when there genuinely is one.
+        if high is not None:
+            schema["offers"]["highPrice"] = str(high)
     return schema
 
 
 # ---------------------------------------------------------------- shell
-def page(slug, title, description, body, schemas=None, current=None, keywords=None):
+def page(slug, title, description, body, schemas=None, current=None, keywords=None,
+         extra_js=None, noindex=False, bare=False):
     current = current or slug
     schemas = schemas or []
+    extra = "".join(f'<script src="{s}" defer></script>' for s in (extra_js or []))
     blocks = "".join(
         f'<script type="application/ld+json">{json.dumps(s, ensure_ascii=False)}</script>'
         for s in schemas
     )
     canonical = B["domain"] + "/" + ("" if slug == "index.html" else slug)
+    robots = ("noindex, nofollow" if noindex
+              else "index, follow, max-image-preview:large")
     kw = f'<meta name="keywords" content="{keywords}">' if keywords else ""
     doc = f"""<!DOCTYPE html>
 <html lang="en-CA">
@@ -427,7 +445,7 @@ def page(slug, title, description, body, schemas=None, current=None, keywords=No
 <meta name="description" content="{description}">
 {kw}
 <link rel="canonical" href="{canonical}">
-<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="robots" content="{robots}">
 <meta name="theme-color" content="#1c4b3a">
 <meta name="geo.region" content="CA-AB">
 <meta name="geo.placename" content="{B['city']}">
@@ -457,7 +475,7 @@ def page(slug, title, description, body, schemas=None, current=None, keywords=No
 {body}
 </main>
 {footer()}
-<script src="assets/js/main.js" defer></script>
+<script src="assets/js/main.js" defer></script>{extra}
 </body>
 </html>
 """
@@ -633,12 +651,23 @@ def estimator_block(form_id="estimator-form", with_cta=True):
     <p class="est-foot">No obligation, and no charge for the quote.</p>"""
 
     prices_attr = "" if claim("show_prices") else ' data-prices="off"'
+    # Carpet & upholstery has its own calculator with confirmed prices, so
+    # point people at it rather than pricing carpets by bedroom count here.
+    carpet_hint = (
+        f"""
+    <div class="form-note mt-2" id="carpet-redirect" hidden>{icon('sparkle', 17)}
+      <span>Carpets and upholstery have their own calculator, priced by room,
+      staircase and furniture item — with live estimates.
+      <a href="carpet-cleaning.html#calculator"><b>Open the carpet &amp;
+      upholstery calculator</b></a>.</span></div>"""
+        if claim("show_prices_carpet") else ""
+    )
     return f"""
 <div class="estimator">
   <form class="est-panel" id="{form_id}"{prices_attr} novalidate>
     <div class="field field--full">
       <span class="field-label">What do you need cleaned?</span>
-      <div class="choice">{svc}</div>
+      <div class="choice">{svc}</div>{carpet_hint}
     </div>
     <div class="field-grid mt-2">
       <div class="field">
@@ -824,6 +853,143 @@ HOME_FAQ = [
 ]
 
 
+def qty_row(key, label, price_key, min_v=0, max_v=30):
+    """One line item: label, its price, and a quantity stepper."""
+    return f"""
+<div class="qty" data-qty="{key}" data-min="{min_v}" data-max="{max_v}">
+  <span class="qty__label">{label}
+    <span class="qty__price" data-price-for="{price_key}"></span></span>
+  <span class="stepper stepper--sm">
+    <button type="button" data-step="down" aria-label="Fewer: {label}">&minus;</button>
+    <output>0</output>
+    <input type="hidden" value="0">
+    <button type="button" data-step="up" aria-label="More: {label}">+</button>
+  </span>
+</div>"""
+
+
+def carpet_calculator():
+    """Carpet & upholstery estimate calculator.
+
+    Deliberately has no bedrooms/bathrooms — it is built around what is
+    actually cleaned: carpeted rooms, hallways, stairs, fabric furniture
+    and mattresses.
+    """
+    if not claim("show_prices_carpet"):
+        return ""
+
+    p = PRICING
+    uph = [i for i in p["items"] if i["group"] == "Upholstery"]
+    mat = [i for i in p["items"] if i["group"] == "Mattresses"]
+
+    carpet_rows = (
+        qty_row("__rooms", "Carpeted rooms", "__rooms_price", 0, 20)
+        .replace('<span class="qty__price" data-price-for="__rooms_price"></span>',
+                 f'<span class="qty__price">up to {p["max_room_sqft"]} sq ft each</span>')
+        + qty_row("__hallways", "Hallways", "__hallways", 0, 10)
+        + qty_row("__steps", "Stairs — number of steps", "__steps", 0, 60)
+    )
+    uph_rows = "".join(qty_row(i["key"], i["label"], i["key"], 0, 15) for i in uph)
+    mat_rows = "".join(qty_row(i["key"], i["label"], i["key"], 0, 15) for i in mat)
+    treat_rows = "".join(
+        f'<label class="treat"><input type="checkbox" name="treatment" value="{t["key"]}">'
+        f'<span>{t["label"]}<span class="qty__price" data-price-for="{t["key"]}"></span></span>'
+        f"</label>"
+        for t in p["treatments"]
+    )
+
+    # A copy of the pricing travels with the page so the calculator still
+    # works if the JSON file cannot be fetched for any reason.
+    inline = json.dumps(p, ensure_ascii=False)
+
+    return f"""
+<div class="estimator" id="carpet-calculator">
+  <script type="application/json" id="fp-pricing-inline">{inline}</script>
+  <form class="est-panel" novalidate>
+    <span class="eyebrow">Carpet cleaning</span>
+    <div class="qty-group">{carpet_rows}</div>
+
+    <span class="eyebrow mt-3">Upholstery</span>
+    <div class="qty-group">{uph_rows}</div>
+
+    <span class="eyebrow mt-3">Mattresses</span>
+    <div class="qty-group">{mat_rows}</div>
+
+    <span class="eyebrow mt-3">Additional treatments</span>
+    <div class="treat-group">{treat_rows}</div>
+
+    <div class="form-note mt-2">{icon('pin', 17)}
+      <span data-pricing-note="max_room">{p['max_room_note']}</span></div>
+  </form>
+
+  <aside class="est-result">
+    <span class="est-result__label">Estimated price</span>
+    <div class="est-price" id="carpet-price">&mdash;<small>Select what needs cleaning</small></div>
+    <p class="est-sub" id="carpet-min-note"></p>
+    <ul class="est-break" id="carpet-lines"></ul>
+    <a class="btn btn--gold btn--block" href="quote.html">
+      Request this quote {icon('arrow', 16)}</a>
+    <p class="est-foot" data-pricing-note="disclaimer">{p['disclaimer']}</p>
+  </aside>
+</div>
+"""
+
+
+def carpet_rate_table():
+    """Published rate table. Rendered here at build time so it is in the HTML
+    source for search engines, and re-rendered by the calculator script from
+    the same JSON so the two can never drift apart."""
+    if not claim("show_prices_carpet"):
+        return ""
+    p = PRICING
+
+    def m(n):
+        return f"${n:,.0f}"
+
+    rows = [("Minimum service charge", "Applies to every appointment",
+             m(p["minimum_service_charge"]))]
+    for i, price in enumerate(p["carpet"]["room_tiers"]):
+        rows.append((f"{i + 1} carpeted room" + ("" if i == 0 else "s"),
+                     f"Up to {p['max_room_sqft']} sq ft per room", m(price)))
+    rows += [
+        ("Each additional room", f"Up to {p['max_room_sqft']} sq ft",
+         "+" + m(p["carpet"]["additional_room"])),
+        ("Hallway", "Per hallway", "+" + m(p["carpet"]["hallway"])),
+        ("Stairs", f"Up to approx. {p['carpet']['stairs_included_steps']} steps",
+         "+" + m(p["carpet"]["stairs_base"])),
+        ("Each additional step", f"Beyond {p['carpet']['stairs_included_steps']} steps",
+         "+" + m(p["carpet"]["additional_step"])),
+    ]
+    for i in p["items"]:
+        rows.append((i["label"], i["group"],
+                     ("from " if i.get("from") else "") + m(i["price"])))
+    for t in p["treatments"]:
+        rows.append((t["label"], "Depending on severity",
+                     "+" + m(t["min"]) + "–" + m(t["max"])))
+
+    body = "".join(f"<tr><td>{a}</td><td>{b}</td><td>{c}</td></tr>" for a, b, c in rows)
+    return f"""
+<section class="section">
+  <div class="shell">
+    <div class="section-head">
+      <span class="eyebrow">Price guide</span>
+      <h2 class="h-lg">Carpet &amp; upholstery rates.</h2>
+      <p class="lede">Starting prices, published so you know roughly where you
+      stand before you call. Every job is confirmed with a written quote.</p>
+    </div>
+    <div class="table-wrap reveal">
+      <table class="rate-table">
+        <thead><tr><th>Service</th><th>Detail</th><th>Estimated price</th></tr></thead>
+        <tbody id="carpet-rate-body">{body}</tbody>
+      </table>
+    </div>
+    <p class="field-hint mt-2" data-pricing-note="disclaimer">{p['disclaimer']}</p>
+    <p class="field-hint mt-1" data-pricing-note="max_room">{p['max_room_note']}</p>
+  </div>
+</section>
+"""
+
+
 def rate_table_section(c1, c2, c3, rows, title, lede, footnote):
     """A published rate table is a pricing claim — it disappears entirely
     until the owner confirms his numbers."""
@@ -875,23 +1041,23 @@ def build_home():
          "Weekly, bi-weekly, monthly or one-time. Kitchens, bathrooms, floors "
          "and dusting, worked through to a written checklist.",
          ["Regular &amp; recurring cleans", "Deep cleans", "Move in / move out", "Post-renovation"],
-         "$135"),
+         "$135", "show_prices"),
         ("service-commercial.svg", "Commercial Cleaning", "commercial-cleaning.html",
          "Offices, clinics, salons, retail and small warehouses across Edmonton. "
          "Scheduled around your opening hours.",
          ["Offices &amp; clinics", "Retail &amp; salons", "Common areas", "Nightly or weekly schedules"],
-         "$160"),
+         "$160", "show_prices"),
         ("service-carpet.svg", "Carpet &amp; Upholstery", "carpet-cleaning.html",
          "Hot-water extraction for carpets, area rugs, sofas and mattresses — "
          "traffic lanes, spills and pet accidents.",
          ["Carpets &amp; area rugs", "Sofas &amp; mattresses", "Pet odour treatment", "Stain protection"],
-         "$89"),
+         f"${PRICING['minimum_service_charge']}", "show_prices_carpet"),
     ]
     cards = ""
-    for i, (img, title, href, desc, bullets, price) in enumerate(services):
+    for i, (img, title, href, desc, bullets, price, gate) in enumerate(services):
         lis = "".join(f"<li>{b}</li>" for b in bullets)
         price_line = (f'<div class="price-from">from <b>{price}</b></div>'
-                      if claim("show_prices") else "")
+                      if claim(gate) else "")
         cards += f"""
 <article class="card reveal" data-delay="{i * 90}">
   <div class="card__media">
@@ -1502,11 +1668,19 @@ def build_carpet():
   </div>
 </section>
 
-{rate_table_section("Service", "Detail", "Price", rows,
-                    "Carpet &amp; upholstery rates.",
-                    "Flat rates, published, so you know before we park outside.",
-                    'Prices in CAD, GST-exclusive. A "room" is up to 250 sq ft; larger '
-                    "open-plan spaces count as two.")}
+<section class="section" id="calculator">
+  <div class="shell">
+    <div class="section-head section-head--center">
+      <span class="eyebrow eyebrow--center">Estimate calculator</span>
+      <h2 class="h-lg">Price your <span class="tilt">carpets</span> and furniture.</h2>
+      <p class="lede">Choose what needs cleaning and see an estimate straight away.
+      No bedrooms or bathrooms here — just what actually gets cleaned.</p>
+    </div>
+    {carpet_calculator()}
+  </div>
+</section>
+
+{carpet_rate_table()}
 
 <section class="section bg-paper">
   <div class="shell">
@@ -1541,12 +1715,14 @@ def build_carpet():
         "Traffic lanes, pet odours and stains, plus sofas, mattresses and area "
         "rugs. Free written quote.",
         body,
+        extra_js=["assets/js/carpet-calculator.js"],
         schemas=[
             service_schema(
                 "Carpet and Upholstery Cleaning",
                 "Hot-water extraction carpet cleaning, upholstery and mattress "
                 "cleaning across Edmonton and surrounding communities.",
-                45, 600,
+                PRICING["minimum_service_charge"], None,
+                enabled=claim("show_prices_carpet"),
             ),
             breadcrumbs([("Home", "index.html"), ("Carpet Cleaning", None)]),
             faq_schema(faqs),
@@ -2325,6 +2501,87 @@ PAGES_FOR_SITEMAP = [
 ]
 
 
+def build_admin_pricing():
+    """Private price editor. Not linked from the site, noindex, and blocked
+    in robots.txt. It contains no customer data — only the prices, which are
+    published on the carpet page anyway."""
+    body = page_head(
+        "Owner tools",
+        'Price <span class="tilt">editor</span>.',
+        "Change any carpet or upholstery price here, check the preview, then "
+        "download the updated file and upload it to the site. No code involved.",
+        [("Home", "index.html"), ("Price editor", None)],
+    ) + f"""
+<section class="section section--tight">
+  <div class="shell" id="price-editor">
+    <div class="contact-grid">
+      <div>
+        <div id="editor-fields"></div>
+      </div>
+      <aside>
+        <div class="summary-card">
+          <span class="eyebrow">Live preview</span>
+          <h3 class="h-sm">What customers would see</h3>
+          <div class="table-wrap mt-2">
+            <table class="rate-table">
+              <thead><tr><th>Example job</th><th>Estimate</th></tr></thead>
+              <tbody id="preview-body"></tbody>
+            </table>
+          </div>
+          <div class="form-status" id="editor-status"></div>
+          <div class="drawer__actions">
+            <button class="btn btn--gold btn--block" type="button" id="btn-download">
+              Download pricing.json</button>
+            <button class="btn btn--ghost btn--block" type="button" id="btn-copy">
+              Copy to clipboard</button>
+            <button class="btn btn--ghost btn--block" type="button" id="btn-reset">
+              Undo all changes</button>
+          </div>
+          <div class="form-note mt-2">{icon('shield', 17)}
+            <span>Downloading does not publish anything. To go live, upload the
+            file to <code>assets/data/pricing.json</code>, replacing the old one.
+            The calculator and the rate table both update immediately.</span></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<section class="section section--tight bg-paper">
+  <div class="shell" style="max-width:820px">
+    <div class="prose">
+      <h2 class="h-md">How this works</h2>
+      <ol style="color:var(--ink-soft);padding-left:1.2rem">
+        <li>Change any price above. The preview on the right updates as you type.</li>
+        <li>Click <b>Download pricing.json</b>.</li>
+        <li>Upload that file to your web host, into the
+        <code>assets/data/</code> folder, replacing the existing
+        <code>pricing.json</code>.</li>
+        <li>Refresh the carpet page — the calculator and the published rate
+        table both use the new prices straight away.</li>
+      </ol>
+      <p class="mt-2">Nothing else needs editing. The prices exist in exactly one
+      file, so the calculator and the rate table can never disagree.</p>
+      <p><b>Note:</b> this page is hidden from Google and not linked anywhere on
+      the site, but it is not password protected — a static site has no login.
+      It only shows prices, which are public on the carpet page anyway. If you
+      want it behind a password later, that needs hosting that supports it and
+      I can set that up.</p>
+    </div>
+  </div>
+</section>
+"""
+    page(
+        "admin-pricing.html",
+        f"Price editor — {B['legal_name']} (private)",
+        "Private price editor for Fast and Perfect Ltd.",
+        body,
+        schemas=[],
+        noindex=True,
+        extra_js=["assets/js/carpet-calculator.js", "assets/js/admin-pricing.js"],
+    )
+
+
 def build_sitemap():
     urls = "".join(
         f"<url><loc>{B['domain']}/{'' if s == 'index.html' else s}</loc>"
@@ -2341,7 +2598,8 @@ def build_sitemap():
 
     robots = (
         "User-agent: *\n"
-        "Allow: /\n\n"
+        "Allow: /\n"
+        "Disallow: /admin-pricing.html\n\n"
         f"Sitemap: {B['domain']}/sitemap.xml\n"
     )
     with open(os.path.join(SITE, "robots.txt"), "w", encoding="utf-8") as fh:
@@ -2389,6 +2647,7 @@ def main():
     build_contact()
     build_privacy()
     build_404()
+    build_admin_pricing()
     build_sitemap()
 
     files = sorted(f for f in os.listdir(SITE) if f.endswith((".html", ".xml", ".txt")))

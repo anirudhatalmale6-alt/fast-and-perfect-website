@@ -245,6 +245,19 @@
       if (carry) carry.value = money(p.low) + '–' + money(p.high) + ' (' + p.freqLabel + ')';
     };
 
+    /* Carpet & upholstery is priced by room, staircase and furniture item —
+       not by bedroom count — so it has its own calculator. Surface the link
+       only when someone actually picks carpet. */
+    var carpetHint = $('#carpet-redirect');
+    if (carpetHint) {
+      var toggleCarpetHint = function () {
+        var picked = estForm.querySelector('input[name="service"]:checked');
+        carpetHint.hidden = !picked || picked.value !== 'carpet';
+      };
+      estForm.addEventListener('change', toggleCarpetHint);
+      toggleCarpetHint();
+    }
+
     estForm.addEventListener('change', renderEstimate);
     estForm.addEventListener('input', renderEstimate);
     estForm.addEventListener('stepper:change', renderEstimate);

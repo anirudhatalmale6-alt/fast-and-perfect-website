@@ -22,7 +22,8 @@ These are stand-in values. Everything else is production-ready.
 | Service areas | Edmonton + 19 secondary | `tools/build.py` → `BUSINESS["primary_area"]` / `secondary_areas` |
 | Photos | Generated illustrations | `site/assets/img/` |
 | Reviews | **Removed** — none published | `tools/build.py` → `TESTIMONIALS` |
-| Prices | **Removed** — none published | `tools/build.py` → `CLAIMS["show_prices"]` |
+| Residential / commercial prices | **Removed** — not confirmed | `tools/build.py` → `CLAIMS["show_prices"]` |
+| Carpet & upholstery prices | **Live** — owner-confirmed | `site/assets/data/pricing.json` |
 | Insurance / bonding / guarantees | **Removed** — none published | `tools/build.py` → `CLAIMS` |
 | Form delivery | Demo mode | `site/assets/js/main.js` → `CONFIG.FORM_ENDPOINT` |
 
@@ -47,7 +48,8 @@ CLAIMS = {
     "same_crew": False,
     "supplies_included": False,
     "years_in_business": None,
-    "show_prices": False,
+    "show_prices": False,         # residential + commercial (NOT confirmed)
+    "show_prices_carpet": True,   # confirmed in writing
 }
 ```
 
@@ -65,7 +67,8 @@ advertising policy and are grounds for a listing suspension.
 | `index.html` | Home — hero, services, quote form, before/after, FAQ |
 | `residential-cleaning.html` | Residential service + room-by-room checklist |
 | `commercial-cleaning.html` | Commercial service + sectors + onboarding |
-| `carpet-cleaning.html` | Carpet & upholstery + method |
+| `carpet-cleaning.html` | Carpet & upholstery + method + estimate calculator + rate table |
+| `admin-pricing.html` | **Private** price editor (noindex, robots-disallowed) |
 | `quote.html` | Quote builder + free quote form |
 | `book.html` | Online booking — service, date, arrival window, live summary |
 | `gallery.html` | Before/after sliders + job grid |
@@ -115,6 +118,34 @@ python3 tools/make_placeholders.py # regenerates the SVG artwork
 ```
 
 Requires Python 3 only — no packages to install.
+
+---
+
+## Changing carpet & upholstery prices
+
+Every carpet, upholstery, mattress and treatment price lives in **one file**:
+`site/assets/data/pricing.json`. The estimate calculator *and* the published
+rate table both read from it, so they can never disagree.
+
+Two ways to change a price:
+
+1. **The price editor** (no code): open `/admin-pricing.html`, change the
+   numbers, watch the live preview, click **Download pricing.json**, then
+   upload that file over `site/assets/data/pricing.json`. No rebuild needed.
+2. **Edit the JSON directly** and re-upload it.
+
+The pricing rules encoded there:
+
+- A minimum service charge applies to **every** appointment.
+- Carpeted rooms are **tiered** (1–5 rooms priced individually), then a flat
+  rate per additional room.
+- Stairs are a base price covering the first N steps, then per step after.
+- Treatments are quoted as a **range**, which makes the whole estimate a range.
+- A "room" has a maximum square footage; larger rooms, basements and open-plan
+  areas are quoted separately.
+
+Run `node tools/test_pricing.js` after changing prices — it re-checks the
+calculator against every published price and the worked examples.
 
 ---
 
