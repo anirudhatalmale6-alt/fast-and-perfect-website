@@ -1463,7 +1463,10 @@ def build_residential():
         prior = pk.get("builds_on")
         lis = ""
         if prior:
-            lis += (f'<li><b>Everything in {pkgs[prior]["label"].lower()}</b>, plus:</li>')
+            # one element, or the flex gap on .card__list li separates the
+            # bold text from the comma
+            lis += (f'<li><span><b>Everything in '
+                    f'{pkgs[prior]["label"].lower()}</b>, plus:</span></li>')
         lis += "".join(f"<li>{x}</li>" for x in pk["includes"])
         price = (f'<div class="price-from">from <b>${pkg_from(key)}</b></div>'
                  if claim("show_prices") else "")
@@ -1517,11 +1520,10 @@ def build_residential():
   <div class="shell">
     <div class="split">
       <div>
-        <span class="eyebrow">What's included</span>
-        <h2 class="h-lg">Every clean follows<br>the same <span class="tilt">checklist</span>.</h2>
-        <p class="lede mt-2">Not a vague "general tidy". A written list, agreed with you
-        before we start, so you can see exactly what's covered and tell us if something
-        should be added or dropped.</p>
+        <span class="eyebrow">How it works</span>
+        <h2 class="h-lg">Booked <span class="tilt">around</span> you.</h2>
+        <p class="lede mt-2">Pick the package that fits, add anything extra you need,
+        and get the price in writing before anything is booked in.</p>
         <ul class="check-list">
           <li>{icon('check', 18)}<span><b>Regular or one-off</b> — weekly, every two weeks, monthly, or a single visit.</span></li>
           <li>{icon('check', 18)}<span><b>Flexible entry</b> — be home, leave a key, or arrange a door code.</span></li>
