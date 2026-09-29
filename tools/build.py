@@ -1447,57 +1447,39 @@ def build_home():
 
 
 def build_residential():
-    checklist = {
-        "Kitchen": [
-            "Counters, backsplash and sink scrubbed and polished",
-            "Exterior of all appliances, cupboards and handles",
-            "Stovetop degreased, range hood wiped",
-            "Microwave cleaned inside and out",
-            "Floors vacuumed and washed, edges included",
-            "Garbage emptied, liner replaced",
-        ],
-        "Bathrooms": [
-            "Toilet cleaned and disinfected — base, hinges and behind",
-            "Tub, shower and tiles scrubbed, glass de-scaled",
-            "Mirrors and chrome polished streak-free",
-            "Vanity, sink and cabinet fronts wiped",
-            "Floors washed, corners and behind the door included",
-        ],
-        "Bedrooms & living areas": [
-            "All reachable surfaces dusted, including sills and ledges",
-            "Beds made or linens changed if left out",
-            "Mirrors and glass polished",
-            "Under furniture vacuumed where accessible",
-            "Carpets vacuumed, hard floors washed",
-        ],
-        "Everywhere": [
-            "Baseboards, switch plates, door handles and frames",
-            "Cobwebs removed from ceilings and corners",
-            "Interior glass on doors",
-            "Final walkthrough against the written checklist",
-        ],
-    }
+    # What each package covers comes from pricing.json — the owner's own
+    # definitions. Nothing here is invented, because a customer booking a
+    # regular clean must not be promised deep-clean work.
+    res_cfg = PRICING["residential"]
+    pkgs = res_cfg["packages"]
+    tiers = res_cfg["tiers"]
+
+    def pkg_from(key):
+        return min(t[key] for t in tiers)
+
     blocks = ""
-    for i, (room, items) in enumerate(checklist.items()):
-        lis = "".join(f"<li>{it}</li>" for it in items)
+    for i, key in enumerate(("regular", "deep", "moveinout")):
+        pk = pkgs[key]
+        prior = pk.get("builds_on")
+        lis = ""
+        if prior:
+            lis += (f'<li><b>Everything in {pkgs[prior]["label"].lower()}</b>, plus:</li>')
+        lis += "".join(f"<li>{x}</li>" for x in pk["includes"])
+        price = (f'<div class="price-from">from <b>${pkg_from(key)}</b></div>'
+                 if claim("show_prices") else "")
         blocks += f"""
 <article class="card reveal" data-delay="{i * 70}">
   <div class="card__body">
     <span class="card__index" style="position:static;margin-bottom:.9rem">{i + 1:02d}</span>
-    <h3 class="h-sm">{room}</h3>
+    <h3 class="h-sm">{pk["label"]}</h3>
     <ul class="card__list">{lis}</ul>
+    <div class="card__foot">{price}</div>
   </div>
 </article>"""
 
-    rates = [
-        ("1 bed / 1 bath condo", "2 – 2.5 hrs", "$120 – $150"),
-        ("2 bed / 1 bath", "2.5 – 3 hrs", "$140 – $175"),
-        ("3 bed / 2 bath", "3 – 4 hrs", "$165 – $210"),
-        ("4 bed / 3 bath", "4 – 5.5 hrs", "$220 – $290"),
-        ("Deep clean (add-on)", "+1.5 – 3 hrs", "+$80 – $160"),
-        ("Move in / move out", "4 – 7 hrs", "$260 – $450"),
-    ]
-    rows = "".join(f"<tr><td>{a}</td><td>{b}</td><td>{c}</td></tr>" for a, b, c in rates)
+    always_paid = f"""
+<div class="form-note mt-3">{icon('wallet', 17)}
+  <span>{res_cfg["always_paid_note"]}</span></div>"""
 
     faqs = [
         ("How long does a house cleaning take?",
@@ -1505,10 +1487,12 @@ def build_residential():
          "deep clean. We'll give you a realistic time along with your quote rather "
          "than a number that sounds good and then runs over."),
         ("What's the difference between a regular clean and a deep clean?",
-         "A regular clean maintains a home that's already in decent shape. A deep clean "
-         "adds the things that only need doing a few times a year — inside the oven and "
-         "fridge, behind appliances, window tracks, light fixtures, baseboards scrubbed "
-         "rather than wiped. Many people start with one deep clean, then go recurring."),
+         "A regular clean covers dusting and surfaces, floors vacuumed and mopped, "
+         "kitchen surfaces and the outside of appliances, and the bathrooms. A deep "
+         "clean adds baseboards, doors and door frames, light switches and a more "
+         "detailed go at built-up grime. Move in / move out adds the inside of empty "
+         "cabinets and drawers on top of that. Inside the fridge, inside the oven and "
+         "interior windows are optional add-ons on any of them."),
         ("Do you do laundry or dishes?",
          "Dishes in the sink can be washed or loaded as part of a kitchen clean. "
          "Laundry is available as an add-on — just tick it on the quote form and we'll "
@@ -1559,10 +1543,13 @@ def build_residential():
 <section class="section bg-paper">
   <div class="shell">
     <div class="section-head">
-      <span class="eyebrow">Room by room</span>
-      <h2 class="h-lg">The full standard clean.</h2>
+      <span class="eyebrow">What's included</span>
+      <h2 class="h-lg">Three packages, clearly <span class="tilt">defined</span>.</h2>
+      <p class="lede">Each one builds on the one before it, so you can see exactly
+      what you are paying for and what is optional.</p>
     </div>
-    <div class="grid grid--2">{blocks}</div>
+    <div class="grid grid--3">{blocks}</div>
+    {always_paid}
   </div>
 </section>
 

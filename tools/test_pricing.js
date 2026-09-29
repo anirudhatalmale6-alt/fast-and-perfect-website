@@ -53,15 +53,28 @@ range('4 rooms + pet odour', S({ rooms: 4, treatments: ['pet_odour'] }), 199, 22
 range('4 rooms + both treatments',
   S({ rooms: 4, treatments: ['heavy_stain', 'pet_odour'] }), 219, 269);
 
-console.log('\n=== CARPET: minimum when combined with another service ===');
-range('1 room alone -> minimum applies', S({ rooms: 1 }), 139, 139);
-range('1 room + house clean, flag ON -> minimum still applies',
-  S({ rooms: 1, withOtherServices: true }), 139, 139);
+console.log('\n=== CARPET MINIMUM: standalone only (owner rule, 29 Sep) ===');
+range('carpet alone, 1 room -> minimum applies', S({ rooms: 1 }), 139, 139);
+range('carpet + upholstery alone -> minimum applies',
+  S({ rooms: 1, items: { chair: 1 } }), 139, 139);
 {
-  const P2 = JSON.parse(JSON.stringify(P));
-  P2.minimum_applies_with_other_services = false;
-  const r = estimate(S({ rooms: 1, withOtherServices: true }), P2);
-  eq('1 room + house clean, flag OFF -> charged at $59', r.low, 59);
+  // With a house clean in the same visit the minimum is waived.
+  const r = estimate(S({ rooms: 1, withOtherServices: true }), P);
+  eq('1 carpeted room WITH a house clean -> charged at $59, no minimum', r.low, 59);
+  ok('  minimum not flagged', r.minimumApplied === false);
+}
+{
+  const r = estimate(S({ items: { chair: 1 }, withOtherServices: true }), P);
+  eq('1 chair WITH a house clean -> charged at $39', r.low, 39);
+}
+{
+  const all = estimateAll({
+    package: true,
+    residential: { package: 'regular', bedrooms: 3, bathrooms: 2 },
+    carpetUph: true,
+    carpetState: { rooms: 1, items: {}, treatments: [] }
+  }, P);
+  eq('house clean + 1 carpeted room = 249 + 59 (not 249 + 139)', all.low, 308);
 }
 
 /* ============================================================ RESIDENTIAL */
@@ -103,25 +116,47 @@ console.log('\n=== RESIDENTIAL: add-ons ===');
   eq('laundry x3 = 249 + 90', r.low, 339);
 }
 
-console.log('\n=== RESIDENTIAL: no double-charging inside a package ===');
+console.log('\n=== PACKAGE INCLUSIONS (owner rules, 29 Sep) ===');
 {
+  // Fridge, oven and interior windows are PAID on every package.
   const r = residential({ package: 'deep', bedrooms: 3, bathrooms: 2,
-    addons: { fridge: true, oven: true, cabinets: true } }, P);
-  eq('deep + fridge/oven/cabinets stays at the deep price', r.low, 349);
-  ok('  they are shown as included',
-    r.lines.filter((l) => l.included).length === 3,
-    `${r.lines.filter((l) => l.included).length} marked included`);
+    addons: { fridge: true, oven: true } }, P);
+  eq('deep + fridge + oven = 349 + 59 + 59 (both charged)', r.low, 467);
+  eq('  nothing marked included', r.lines.filter((l) => l.included).length, 0);
 }
 {
   const r = residential({ package: 'moveinout', bedrooms: 3, bathrooms: 2,
     addons: { windows: true } }, P);
-  eq('move-out + interior windows stays at the move-out price', r.low, 429);
+  eq('move-out + interior windows = 429 + 60 (charged)', r.low, 489);
 }
 {
   const r = residential({ package: 'regular', bedrooms: 3, bathrooms: 2,
     addons: { fridge: true } }, P);
-  eq('regular + fridge DOES charge (not included)', r.low, 308);
+  eq('regular + fridge = 249 + 59', r.low, 308);
 }
+{
+  // Only move-in/out covers inside cabinets (it cleans empty cabinets/drawers).
+  const r = residential({ package: 'moveinout', bedrooms: 3, bathrooms: 2,
+    addons: { cabinets: true } }, P);
+  eq('move-out + inside cabinets stays at 429 (included)', r.low, 429);
+  eq('  marked included', r.lines.filter((l) => l.included).length, 1);
+}
+{
+  const r = residential({ package: 'deep', bedrooms: 3, bathrooms: 2,
+    addons: { cabinets: true } }, P);
+  eq('deep + inside cabinets = 349 + 75 (NOT included)', r.low, 424);
+}
+{
+  const r = residential({ package: 'regular', bedrooms: 3, bathrooms: 2,
+    addons: { cabinets: true } }, P);
+  eq('regular + inside cabinets = 249 + 75', r.low, 324);
+}
+ok('fridge is never auto-included on any package',
+  Object.values(P.residential.included_in).every((v) => v.indexOf('fridge') === -1));
+ok('oven is never auto-included on any package',
+  Object.values(P.residential.included_in).every((v) => v.indexOf('oven') === -1));
+ok('interior windows are never auto-included on any package',
+  Object.values(P.residential.included_in).every((v) => v.indexOf('windows') === -1));
 
 console.log('\n=== RESIDENTIAL: recurring discount, base only ===');
 {
