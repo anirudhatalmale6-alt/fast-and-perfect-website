@@ -14,11 +14,11 @@ These are stand-in values. Everything else is production-ready.
 
 | What | Current value | Where to change it |
 |---|---|---|
-| Phone number | `(780) 555-0142` | `tools/build.py` → `BUSINESS` |
-| Email | `hello@fastandperfect.ca` | `tools/build.py` → `BUSINESS` |
+| Phone number | **(587) 338-0069** — confirmed | `tools/build.py` → `BUSINESS` |
+| Email | **info@fastandperfect.ca** — confirmed | `tools/build.py` → `BUSINESS` |
 | Domain | `https://fastandperfect.ca` | `tools/build.py` → `BUSINESS` |
 | Social links | `#` | `tools/build.py` → `BUSINESS["social"]` |
-| Hours | Mon–Fri 8–7, Sat 9–5 | `tools/build.py` → `BUSINESS["hours"]` |
+| Hours | **Mon–Fri 8–8, Sat 9–6, Sun 10–4** — confirmed | `tools/build.py` → `BUSINESS["hours"]` |
 | Service areas | Edmonton + 19 secondary | `tools/build.py` → `BUSINESS["primary_area"]` / `secondary_areas` |
 | Photos | Generated illustrations | `site/assets/img/` |
 | Reviews | **Removed** — none published | `tools/build.py` → `TESTIMONIALS` |
@@ -164,8 +164,19 @@ N steps then per step; treatments quoted as a **range**, which makes the whole
 estimate a range; a maximum room size, above which rooms, large basements and
 open-plan areas are quoted separately.
 
-Run `node tools/test_pricing.js` after changing prices — it re-checks the
-calculator against every published price and the worked examples.
+Run both checks after any change:
+
+```bash
+node tools/test_pricing.js        # 136 assertions on the pricing rules
+python3 tools/check_consistency.py # site-wide copy + contact-detail consistency
+```
+
+`check_consistency.py` fails the build if any page contradicts the confirmed
+package structure — an always-paid add-on (fridge, oven, interior windows)
+described as included, deep-clean-only work (baseboards, door frames, light
+switches) promised on every visit, a stale phone number or email, a disabled
+claim reappearing, a price that is not in `pricing.json`, or a missing
+commercial band.
 
 ---
 

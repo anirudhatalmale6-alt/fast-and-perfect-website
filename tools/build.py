@@ -26,10 +26,10 @@ BUSINESS = {
     "name": "Fast and Perfect",
     "legal_name": "Fast and Perfect Ltd.",
     "tagline": "Cleaning Services",
-    "phone_display": "(780) 555-0142",          # PLACEHOLDER
-    "phone_href": "+17805550142",               # PLACEHOLDER
-    "email": "hello@fastandperfect.ca",         # PLACEHOLDER (needs the domain first)
-    "domain": "https://fastandperfect.ca",      # PLACEHOLDER (pending registration)
+    "phone_display": "(587) 338-0069",
+    "phone_href": "+15873380069",
+    "email": "info@fastandperfect.ca",
+    "domain": "https://fastandperfect.ca",
     "city": "Edmonton",
     "region": "AB",
     "region_full": "Alberta",
@@ -38,13 +38,14 @@ BUSINESS = {
     "lat": "53.5461",
     "lng": "-113.4938",
     "hours": [
-        ("Monday – Friday", "8:00 am – 7:00 pm"),
-        ("Saturday", "9:00 am – 5:00 pm"),
-        ("Sunday", "By appointment"),
+        ("Monday – Friday", "8:00 am – 8:00 pm"),
+        ("Saturday", "9:00 am – 6:00 pm"),
+        ("Sunday", "10:00 am – 4:00 pm"),
     ],
     "hours_schema": [
-        (["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "08:00", "19:00"),
-        (["Saturday"], "09:00", "17:00"),
+        (["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "08:00", "20:00"),
+        (["Saturday"], "09:00", "18:00"),
+        (["Sunday"], "10:00", "16:00"),
     ],
     # Edmonton is the primary market — it leads every page, carries the
     # keyword weight, and is the geographic target for Google Ads and SEO.
@@ -297,7 +298,7 @@ def footer():
           <a href="tel:{TEL}">{icon('phone', 15)} {PHONE}</a>
           <a href="mailto:{B['email']}">{icon('mail', 15)} {B['email']}</a>
           <div>{icon('pin', 15)} Serving {B['city']}, {B['region']} &amp; area</div>
-          <div>{icon('clock', 15)} Mon–Fri 8am–7pm · Sat 9am–5pm</div>
+          <div>{icon('clock', 15)} Mon–Fri 8am–8pm · Sat 9am–6pm · Sun 10am–4pm</div>
         </div>
       </div>
     </div>
@@ -336,7 +337,7 @@ def local_business_schema():
         "name": B["legal_name"],
         "alternateName": B["name"],
         "url": B["domain"] + "/",
-        "telephone": "+1-780-555-0142",
+        "telephone": B["phone_href"],
         "email": B["email"],
         "image": B["domain"] + "/assets/img/og-cover.svg",
         "logo": B["domain"] + "/assets/img/logo-mark.svg",
@@ -745,11 +746,12 @@ HOME_FAQ = [
      "us. Tell us the details through the quote form or over the phone and we'll come "
      "back with a written price. The quote is free and there's no obligation."),
     ("What's the difference between a regular clean and a deep clean?",
-     "A regular clean maintains a space that's already in reasonable shape. A deep "
-     "clean covers the things that only need doing occasionally — inside the oven and "
-     "fridge, behind appliances, window tracks, light fixtures, baseboards scrubbed "
-     "rather than wiped. Many people start with a deep clean and then move to a "
-     "regular schedule."),
+     "A regular clean covers general dusting and surfaces, vacuuming and mopping "
+     "floors, kitchen surfaces and the outside of appliances, and the bathrooms. A "
+     "deep clean adds baseboards, doors and door frames, light switches, and a more "
+     "detailed go at built-up grime. Move in / move out adds the inside of empty "
+     "cabinets and drawers on top of that. Inside the fridge, inside the oven and "
+     "interior windows are optional paid add-ons on every package."),
     ("How far ahead do I need to book?",
      "Get in touch and we'll tell you honestly what's available. If you need something "
      "urgently, call rather than using the form — it's faster."),
@@ -1364,16 +1366,16 @@ def build_home():
       </div>
       <div>
         <span class="eyebrow">Our standard</span>
-        <h2 class="h-lg">We clean the bits<br>other crews <span class="tilt">skip</span>.</h2>
-        <p class="lede mt-2">Anyone can wipe a counter. The difference shows up in the
-        places you only notice when they're wrong.</p>
+        <h2 class="h-lg">You know exactly<br>what you're <span class="tilt">paying for</span>.</h2>
+        <p class="lede mt-2">Three clearly defined packages, each building on the one
+        before it. Nothing vague, and nothing charged twice.</p>
         <ul class="check-list">
-          <li>{icon('check', 18)}<span><b>Baseboards, switch plates and door frames</b> — every visit, not just deep cleans.</span></li>
-          <li>{icon('check', 18)}<span><b>Under and behind</b> the toaster, the couch cushions, the toilet base.</span></li>
-          <li>{icon('check', 18)}<span><b>Fresh microfibre per room</b> so bathroom cloths never touch a kitchen counter.</span></li>
-          <li>{icon('check', 18)}<span><b>A written checklist</b> agreed before we start, so you know exactly what's covered.</span></li>
+          <li>{icon('check', 18)}<span><b>Regular cleaning</b> — dusting and surfaces, floors vacuumed and mopped, kitchen surfaces and appliance exteriors, bathrooms.</span></li>
+          <li>{icon('check', 18)}<span><b>Deep cleaning</b> adds baseboards, doors and door frames, light switches, and built-up grime.</span></li>
+          <li>{icon('check', 18)}<span><b>Move in / move out</b> adds the inside of empty cabinets and drawers.</span></li>
+          <li>{icon('check', 18)}<span><b>Optional extras stay optional</b> — inside the fridge, inside the oven and interior windows are priced separately on every package.</span></li>
         </ul>
-        <a class="btn btn--ghost mt-3" href="residential-cleaning.html">See the full checklist {icon('arrow', 16)}</a>
+        <a class="btn btn--ghost mt-3" href="residential-cleaning.html">Compare the packages {icon('arrow', 16)}</a>
       </div>
     </div>
   </div>
