@@ -178,8 +178,8 @@
       var p = priceEstimate(state);
 
       if (priceEl) {
-        priceEl.innerHTML = money(p.low) + '&ndash;' + money(p.high) +
-          ' <small>' + CONFIG.CURRENCY + '</small>';
+        priceEl.innerHTML = money(p.low) + '&thinsp;&ndash;&thinsp;' + money(p.high) +
+          '<small>' + CONFIG.CURRENCY + '</small>';
       }
       if (subEl) {
         subEl.textContent = p.discountPct > 0
@@ -187,9 +187,12 @@
           : 'One-time visit. Switch to a recurring plan to save up to 20%.';
       }
       if (breakEl) {
-        var rows = [
-          ['Base clean', money(p.subtotal - p.extrasTotal)]
-        ];
+        // only itemise when there is actually something to itemise — a
+        // "Base clean $221 / Estimated total $221" pair just reads as a bug
+        var rows = [];
+        if (p.extrasTotal > 0 || p.discountAmt > 0.5) {
+          rows.push(['Base clean', money(p.subtotal - p.extrasTotal)]);
+        }
         if (p.extrasTotal > 0) rows.push(['Add-ons (' + state.extras.length + ')', money(p.extrasTotal)]);
         if (p.discountAmt > 0.5) rows.push([p.freqLabel + ' discount', '&minus;' + money(p.discountAmt)]);
         rows.push(['Estimated total', money(p.total)]);
