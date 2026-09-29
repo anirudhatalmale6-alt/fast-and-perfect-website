@@ -1245,12 +1245,12 @@ def build_home():
          "and dusting, worked through to a written checklist.",
          ["Regular &amp; recurring cleans", "Deep cleans", "Move in / move out", "Post-renovation"],
          f"${min(t['regular'] for t in PRICING['residential']['tiers'])}", "show_prices"),
-        ("service-commercial.svg", "Commercial Cleaning", "commercial-cleaning.html",
+        ("photos/office.jpg", "Commercial Cleaning", "commercial-cleaning.html",
          "Offices, clinics, salons, retail and small warehouses across Edmonton. "
          "Scheduled around your opening hours.",
          ["Offices &amp; clinics", "Retail &amp; salons", "Common areas", "Nightly or weekly schedules"],
          f"${min(b['price'] for b in PRICING['commercial']['bands'])}", "show_prices"),
-        ("service-carpet.svg", "Carpet &amp; Upholstery", "carpet-cleaning.html",
+        ("photos/carpet-extraction.jpg", "Carpet &amp; Upholstery", "carpet-cleaning.html",
          "Hot-water extraction for carpets, area rugs, sofas and mattresses — "
          "traffic lanes, spills and pet accidents.",
          ["Carpets &amp; area rugs", "Sofas &amp; mattresses", "Pet odour treatment", "Stain protection"],
@@ -1667,7 +1667,7 @@ def build_commercial():
   <div class="shell">
     <div class="split split--flip">
       <div class="split__media reveal">
-        <img src="assets/img/service-commercial.svg" alt="Clean Edmonton office after a commercial cleaning service" loading="lazy" width="1200" height="900">
+        <img src="assets/img/photos/office.jpg" alt="Clean Edmonton office after a commercial cleaning service" loading="lazy" width="1200" height="900">
       </div>
       <div>
         <span class="eyebrow">How we work</span>
@@ -1831,7 +1831,7 @@ def build_carpet():
         </div>
       </div>
       <div class="split__media reveal">
-        <img src="assets/img/service-carpet.svg" alt="Carpet cleaned by hot-water extraction showing fresh vacuum tracks" loading="lazy" width="1200" height="900">
+        <img src="assets/img/photos/carpet-extraction.jpg" alt="Carpet cleaned by hot-water extraction showing fresh vacuum tracks" loading="lazy" width="1200" height="900">
       </div>
     </div>
   </div>
@@ -1917,12 +1917,12 @@ def build_gallery():
     tiles = [
         ("photos/kitchen.jpg", "Kitchen deep clean"),
         ("photos/bathroom.jpg", "Bathroom detail"),
-        ("gallery-office.svg", "Office after-hours clean"),
-        ("gallery-carpet.svg", "Carpet extraction"),
-        ("gallery-window.svg", "Interior windows"),
-        ("gallery-hallway.svg", "Common areas and hallways"),
-        ("photos/living-room.jpg", "Living areas"),
-        ("service-commercial.svg", "Clinic and treatment rooms"),
+        ("photos/office.jpg", "Office after-hours clean"),
+        ("photos/carpet-extraction.jpg", "Carpet extraction"),
+        ("photos/windows.jpg", "Interior windows"),
+        ("photos/hallway.jpg", "Common areas and hallways"),
+        ("photos/move-out.jpg", "Move-out clean"),
+        ("photos/clinic.jpg", "Clinic and treatment rooms"),
     ]
     grid = "".join(
         f'<figure class="tile reveal" data-delay="{i * 50}">'
@@ -2005,19 +2005,28 @@ def build_about():
   <div class="shell">
     <div class="split">
       <div class="split__media reveal">
-        <img src="assets/img/about-crew.svg" alt="The Fast and Perfect cleaning team" loading="lazy" width="1200" height="900">
+        <img src="assets/img/photos/equipment.jpg"
+             alt="Truck-portable hot-water extractor with hoses, wands and upholstery tools"
+             loading="lazy" width="653" height="490">
       </div>
       <div class="prose">
-        <span class="eyebrow">Who we are</span>
-        <h2 class="h-lg">Cleaning, done<br><span class="tilt">properly</span>.</h2>
+        <span class="eyebrow">Equipped for the job</span>
+        <h2 class="h-lg">Professional cleaning<br><span class="tilt">equipment</span>.</h2>
         <p class="lede mt-2">{B['legal_name']} is a locally operated cleaning company
         serving {B['city']} and surrounding areas. Our goal is to provide reliable,
         detailed and professional cleaning services with clear pricing and an easy
         booking experience.</p>
         <p class="mt-2">We serve residential and commercial clients and focus on
         delivering consistent, high-quality service every time.</p>
+        <p>Carpet and upholstery work is done with truck-portable hot-water
+        extraction equipment rather than a domestic machine — that is what lifts
+        soil out of the pile instead of moving it around.</p>
         <p>Every job starts with a written quote and an agreed task list, so there is no
         ambiguity about what is included or what it costs.</p>
+        <div class="form-note mt-2">{icon('sparkle', 17)}
+          <span>The photo shows the type of professional extraction equipment used
+          for carpet and upholstery work. It is illustrative — it is not a
+          photograph of our own vehicle or premises.</span></div>
       </div>
     </div>
   </div>
@@ -2202,7 +2211,7 @@ def build_areas():
         <a class="btn btn--gold mt-3" href="quote.html">{icon('sparkle', 16)} Request a quote</a>
       </div>
       <div class="split__media reveal">
-        <img src="assets/img/gallery-hallway.svg" alt="Cleaned common area hallway in an Edmonton building" loading="lazy" width="1200" height="900">
+        <img src="assets/img/photos/hallway.jpg" alt="Cleaned common area hallway in an Edmonton building" loading="lazy" width="1200" height="900">
       </div>
     </div>
   </div>

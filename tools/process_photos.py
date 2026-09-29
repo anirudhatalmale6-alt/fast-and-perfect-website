@@ -46,11 +46,16 @@ def emit(src, name, anchor=(0.5, 0.5), crop_box=None):
     if crop_box:
         im = im.crop(crop_box)
     im = crop_to_ratio(im, anchor=anchor)
-    im = im.resize((TARGET_W, TARGET_H), Image.LANCZOS)
+    # Never upscale: several sources are tiles cut out of a grid and blowing
+    # them up to the nominal width just makes them soft.
+    out_w = min(TARGET_W, im.size[0])
+    out_h = int(round(out_w / (TARGET_W / TARGET_H)))
+    im = im.resize((out_w, out_h), Image.LANCZOS)
     dest = os.path.join(OUT, name)
     im.save(dest, "JPEG", quality=QUALITY, optimize=True, progressive=True)
     kb = os.path.getsize(dest) / 1024
-    print(f"  {name:28s} {TARGET_W}x{TARGET_H}  {kb:6.0f} KB   <- {os.path.basename(src)}")
+    flag = "" if out_w >= 1000 else "   (small source)"
+    print(f"  {name:26s} {out_w}x{out_h}  {kb:6.0f} KB   <- {os.path.basename(src)}{flag}")
     return dest
 
 
@@ -74,6 +79,43 @@ def strip_panel(index):
     return (index * pw, STRIP_LABEL_H, (index + 1) * pw, h)
 
 
+# Grids of un-labelled tiles supplied by the owner. Each grid is split into
+# equal tiles; the index is row-major from the top-left.
+GRIDS = {
+    "A": ("13A6B804-A887-4BAA-A80C-9B4B2BA6E8BB.jpg", 3, 2),
+    "C": ("FC05260E-DD6F-4536-BD26-6AECAB4A046E.jpg", 4, 2),
+}
+
+
+def grid_tile(grid_key, index):
+    """Crop box for one tile of a grid (1-based, row-major)."""
+    fname, cols, rows = GRIDS[grid_key]
+    im = Image.open(os.path.join(ROOT, fname))
+    w, h = im.size
+    tw, th = w // cols, h // rows
+    r, c = divmod(index - 1, cols)
+    return fname, (c * tw, r * th, (c + 1) * tw, (r + 1) * th)
+
+
+def emit_tile(grid_key, index, name, anchor=(0.5, 0.5)):
+    fname, box = grid_tile(grid_key, index)
+    return emit(fname, name, anchor=anchor, crop_box=box)
+
+
+# The equipment photo. Cropped hard so the Ninja extractor and tools are the
+# subject: the supplied frame shows a fully branded van the business does not
+# own, and the owner asked that it not be presented as their vehicle.
+EQUIPMENT = "75435170-23E8-4872-9FC5-A94B0155A073.jpg"
+EQUIPMENT_BOX = None  # computed at run time from the image size
+
+
+def emit_equipment(name):
+    im = Image.open(os.path.join(ROOT, EQUIPMENT))
+    w, h = im.size
+    box = (int(w * 0.365), int(h * 0.16), int(w * 0.79), h)
+    return emit(EQUIPMENT, name, anchor=(0.5, 0.72), crop_box=box)
+
+
 def main():
     print("Section photos:")
     emit(LIVING_ROOM, "living-room.jpg")
@@ -91,6 +133,18 @@ def main():
         emit(STRIP, name, anchor=(0.5, 0.35), crop_box=strip_panel(i))
     for i, name in ((0, "ba-bathroom-before.jpg"), (1, "ba-bathroom-after.jpg")):
         emit(STRIP, name, anchor=(0.5, 0.55), crop_box=strip_panel(i))
+
+    print("\nSection photos from the un-labelled grids:")
+    emit_tile("C", 1, "office.jpg")            # office carpet vacuuming
+    emit_tile("A", 2, "carpet-extraction.jpg") # extraction close-up, no people
+    emit_tile("C", 4, "windows.jpg")           # interior window squeegee
+    emit_tile("C", 5, "hallway.jpg")           # common area / hallway
+    emit_tile("A", 5, "move-out.jpg")          # empty room
+    emit_tile("C", 8, "clinic.jpg")            # treatment room
+    emit_tile("A", 1, "upholstery.jpg")        # sofa extraction
+
+    print("\nEquipment:")
+    emit_equipment("equipment.jpg")
 
     total = sum(os.path.getsize(os.path.join(OUT, f))
                 for f in os.listdir(OUT) if f.endswith(".jpg"))

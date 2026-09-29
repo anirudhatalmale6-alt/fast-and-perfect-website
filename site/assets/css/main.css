@@ -143,6 +143,11 @@ h1 svg, h2 svg, h3 svg, h4 svg, p svg, label svg, summary svg, td svg, li > svg,
   vertical-align: -0.12em;
 }
 
+/* The UA stylesheet gives <figure> a 40px side margin. Gallery tiles and
+   quote cards are figures, so without this they sit 80px narrower than their
+   grid cell and the aspect-ratio then shrinks their height to match. */
+figure { margin: 0; }
+
 h1, h2, h3, h4 {
   font-family: var(--display);
   font-weight: 600;
@@ -577,7 +582,7 @@ ul.trust-row { list-style: none; margin: 0; padding-left: 0; padding-top: 1.6rem
   aspect-ratio: 4 / 3.75;
   background: var(--sage);
 }
-.collage__main img { width: 100%; height: 100%; object-fit: cover; }
+.collage__main img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
 .float-card {
   position: absolute;
@@ -694,7 +699,14 @@ ul.trust-row { list-style: none; margin: 0; padding-left: 0; padding-top: 1.6rem
   position: relative;
   overflow: hidden;
 }
-.card__media img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.card__media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
 .card:hover .card__media img { transform: scale(1.055); }
 
 .card__index {
@@ -1243,8 +1255,20 @@ ul.trust-row { list-style: none; margin: 0; padding-left: 0; padding-top: 1.6rem
   background: var(--sage);
   box-shadow: var(--shadow-sm);
 }
-.tile:nth-child(6n + 1) { grid-column: span 2; aspect-ratio: 8 / 5; }
-.tile img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.3, 1); }
+/* A featured tile spanning two columns left a hole beside it, because the
+   row grew to its height while its neighbours kept theirs. Uniform tiles
+   pack cleanly at every breakpoint. */
+/* Absolutely positioned so the image can never feed its intrinsic size back
+   into a box that is already sized by aspect-ratio — that circularity made
+   the tiles collapse to the image width instead of filling the grid cell. */
+.tile img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
 .tile:hover img { transform: scale(1.06); }
 .tile__cap {
   position: absolute;
@@ -1349,7 +1373,8 @@ ul.trust-row { list-style: none; margin: 0; padding-left: 0; padding-top: 1.6rem
   aspect-ratio: 5 / 4;
   background: var(--sage);
 }
-.split__media img { width: 100%; height: 100%; object-fit: cover; }
+.split__media { position: relative; }
+.split__media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .split--flip .split__media { order: 2; }
 
 .check-list { list-style: none; margin: 1.6rem 0 0; padding: 0; display: grid; gap: 0.8rem; }
@@ -1736,7 +1761,6 @@ ul.trust-row { list-style: none; margin: 0; padding-left: 0; padding-top: 1.6rem
   .footer-grid { grid-template-columns: 1fr; }
   .grid--3, .grid--2, .grid--4, .steps--3 { grid-template-columns: 1fr; }
   .field-grid { grid-template-columns: 1fr; }
-  .tile:nth-child(6n + 1) { grid-column: span 1; aspect-ratio: 4 / 3; }
   .gallery-grid { grid-template-columns: 1fr 1fr; gap: 0.7rem; }
   .float-card--rating { top: 4%; left: 0; padding: 0.7rem 0.85rem; }
   .float-card--quote { bottom: 3%; right: 0; width: min(215px, 72%); padding: 0.8rem 0.95rem; }
