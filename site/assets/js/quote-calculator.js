@@ -200,10 +200,8 @@
         html.push('<li><span>Minimum service charge applied</span><b>' +
           window.FPCarpet.money(PRICING.minimum_service_charge) + '</b></li>');
       }
-      unpricedPicked.forEach(function (x) {
-        html.push('<li><span>' + serviceLabel(x) +
-          '</span><b>quoted separately</b></li>');
-      });
+      // unpriced services are already listed in #quote-services — do not
+      // repeat them here
       linesEl.innerHTML = html.join('');
     }
 
@@ -231,6 +229,15 @@
           window.FPCarpet.money(PRICING.minimum_service_charge) +
           ' applies to every carpet or upholstery appointment.';
       }
+    }
+
+    // the carpet disclaimer only makes sense when carpet/upholstery is picked
+    var footEl = $('.est-foot', root);
+    if (footEl) {
+      footEl.textContent = pricedPicked.length
+        ? PRICING.disclaimer
+        : 'Your written quote is free and carries no obligation. We confirm ' +
+          'the final price with you before any work is booked in.';
     }
 
     // hand everything to the quote form
