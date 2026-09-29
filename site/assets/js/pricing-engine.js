@@ -63,15 +63,14 @@
       });
     }
 
-    /* Stairs: a flat base covers the first N steps, then per-step after. */
+    /* Stairs are charged per individual step. */
     var steps = Math.max(0, state.steps | 0);
     if (steps > 0) {
-      var inc = pricing.carpet.stairs_included_steps;
-      var stairCost = pricing.carpet.stairs_base +
-        Math.max(0, steps - inc) * pricing.carpet.additional_step;
+      var stairCost = steps * pricing.carpet.per_step;
       subtotal += stairCost;
       lines.push({
-        label: 'Stairs (' + steps + (steps === 1 ? ' step' : ' steps') + ')',
+        label: 'Stairs (' + steps + (steps === 1 ? ' step' : ' steps') +
+          ' x ' + money(pricing.carpet.per_step) + ')',
         amount: stairCost
       });
     }
@@ -98,33 +97,47 @@
       lines.push({ label: t.label, amount: t.min, amountMax: t.max });
     });
 
-    var low = subtotal + extraLow;
-    var high = subtotal + extraHigh;
-
-    /* The minimum service charge applies to carpet/upholstery appointments.
-       Whether it still applies when a house or commercial clean is booked in
-       the same visit is a business decision, so it is configurable. */
-    var min = pricing.minimum_service_charge || 0;
-    var applyMin = true;
-    if (state.withOtherServices &&
-        pricing.minimum_applies_with_other_services === false) {
-      applyMin = false;
-    }
-    var minimumApplied = false;
-    if (applyMin) {
-      if (low < min) { low = min; minimumApplied = true; }
-      if (high < min) { high = min; }
-    }
-
+    /* No minimum is applied here. The minimum is an APPOINTMENT floor and is
+       applied once to the whole basket in estimateAll(), so a standalone
+       booking of add-ons + carpet is measured against it together rather
+       than section by section. */
     return {
-      low: low,
-      high: high,
+      low: subtotal + extraLow,
+      high: subtotal + extraHigh,
       subtotal: subtotal,
       lines: lines,
-      minimumApplied: minimumApplied,
+      minimumApplied: false,
       hasFrom: hasFrom,
       empty: lines.length === 0
     };
+  }
+
+  /* Prices a set of add-ons. Works with a package (where some add-ons are
+     already covered and cost nothing) and equally without one, so add-ons
+     can be booked as standalone individual services.
+     `pkg` may be null, meaning "no package selected". */
+  function priceAddons(addons, pkg, cfg) {
+    var included = (pkg && cfg.included_in && cfg.included_in[pkg]) || [];
+    var lines = [];
+    var total = 0;
+    var hasFrom = false;
+    (cfg.addons || []).forEach(function (a) {
+      var picked = addons && addons[a.key];
+      if (!picked) return;
+      if (included.indexOf(a.key) !== -1) {
+        lines.push({ label: a.label, included: true, amount: 0 });
+        return;
+      }
+      var qty = a.qty ? Math.max(1, picked | 0) : 1;
+      var cost = qty * a.price;
+      total += cost;
+      if (a.from) hasFrom = true;
+      lines.push({
+        label: (qty > 1 ? qty + ' x ' : '') + a.label + (a.from ? ' (from)' : ''),
+        amount: cost
+      });
+    });
+    return { lines: lines, total: total, hasFrom: hasFrom };
   }
 
   /* ----------------------------------------------------------- residential
@@ -164,27 +177,10 @@
       if (typeof base !== 'number') { custom = true; reason = 'Quoted individually.'; }
     }
 
-    /* Add-ons. Anything already covered by the chosen package is shown as
-       included and costs nothing — never charged twice. */
-    var included = (cfg.included_in && cfg.included_in[pkg]) || [];
-    var addonTotal = 0;
-    var addonHasFrom = false;
-    (cfg.addons || []).forEach(function (a) {
-      var picked = state.addons && state.addons[a.key];
-      if (!picked) return;
-      if (included.indexOf(a.key) !== -1) {
-        lines.push({ label: a.label, included: true, amount: 0 });
-        return;
-      }
-      var qty = a.qty ? Math.max(1, picked | 0) : 1;
-      var cost = qty * a.price;
-      addonTotal += cost;
-      if (a.from) addonHasFrom = true;
-      lines.push({
-        label: (qty > 1 ? qty + ' x ' : '') + a.label + (a.from ? ' (from)' : ''),
-        amount: cost
-      });
-    });
+    var ad = priceAddons(state.addons, pkg, cfg);
+    lines = lines.concat(ad.lines);
+    var addonTotal = ad.total;
+    var addonHasFrom = ad.hasFrom;
 
     if (custom) {
       return {
@@ -287,7 +283,15 @@
     };
   }
 
-  /* ------------------------------------------------------------- combined */
+  /* ------------------------------------------------------------- combined
+     Sums every selected section, then applies the MINIMUM APPOINTMENT TOTAL
+     once to the whole basket — and only when no cleaning package is booked.
+
+       standalone, selection < minimum  -> customer pays the minimum
+       standalone, selection >= minimum -> customer pays the actual total
+       with a residential/commercial package -> minimum never applies,
+                                                add-ons at their normal price
+  */
   function estimateAll(state, pricing) {
     var sections = [];
     var totalLow = 0, totalHigh = 0;
@@ -297,6 +301,10 @@
     var wantsHome = !!state.package;
     var wantsComm = !!state.commercial;
     var wantsCarpetOrUph = !!state.carpetUph;
+    var wantsAddons = !!state.addonsOnly;
+
+    // A booked cleaning package is what lifts the appointment above the floor.
+    var hasPackage = wantsHome || wantsComm;
 
     if (wantsHome) {
       var r = residential(state.residential || {}, pricing);
@@ -306,6 +314,19 @@
         if (r.custom) { anyCustom = true; reasons.push(r.reason); }
         else anyPriced = true;
         if (r.addonTotal) anyPriced = true;
+      }
+    } else if (wantsAddons) {
+      // Individual services with no package behind them.
+      var ad = priceAddons((state.residential || {}).addons, null,
+                           pricing.residential);
+      if (ad.lines.length) {
+        sections.push({
+          key: 'addons', title: 'Individual services',
+          result: { custom: false, lines: ad.lines, low: ad.total,
+                    high: ad.total, hasFrom: ad.hasFrom }
+        });
+        totalLow += ad.total; totalHigh += ad.total;
+        anyPriced = true;
       }
     }
 
@@ -320,13 +341,18 @@
     }
 
     if (wantsCarpetOrUph) {
-      var cu = estimate(
-        Object.assign({}, state.carpetState || {},
-          { withOtherServices: wantsHome || wantsComm }),
-        pricing);
+      var cu = estimate(state.carpetState || {}, pricing);
       sections.push({ key: 'carpet', title: 'Carpet & upholstery', result: cu });
       totalLow += cu.low; totalHigh += cu.high;
-      anyPriced = true;
+      if (!cu.empty) anyPriced = true;
+    }
+
+    /* The appointment floor. Never an addition — a floor. */
+    var min = pricing.minimum_service_charge || 0;
+    var minimumApplied = false;
+    if (!hasPackage && anyPriced && min > 0) {
+      if (totalLow < min) { totalLow = min; minimumApplied = true; }
+      if (totalHigh < min) { totalHigh = min; }
     }
 
     return {
@@ -335,6 +361,9 @@
       high: totalHigh,
       anyCustom: anyCustom,
       anyPriced: anyPriced,
+      hasPackage: hasPackage,
+      minimumApplied: minimumApplied,
+      minimum: min,
       reasons: reasons
     };
   }
@@ -346,6 +375,7 @@
 
   global.FPCarpet = {
     estimate: estimate,
+    priceAddons: priceAddons,
     residential: residential,
     commercial: commercial,
     estimateAll: estimateAll,

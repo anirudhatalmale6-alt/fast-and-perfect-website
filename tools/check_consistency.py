@@ -123,7 +123,7 @@ for b in PRICING["commercial"]["bands"]:
     allowed.add(b["price"])
 for v in PRICING["carpet"]["room_tiers"]:
     allowed.add(v)
-for k in ("additional_room", "hallway", "stairs_base", "additional_step"):
+for k in ("additional_room", "hallway", "per_step"):
     allowed.add(PRICING["carpet"][k])
 for i in PRICING["items"]:
     allowed.add(i["price"])

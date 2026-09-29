@@ -29,20 +29,21 @@ function range(name, state, lo, hi) {
     r.low === lo && r.high === hi ? formatRange(r) : `got ${r.low}-${r.high}, expected ${lo}-${hi}`);
 }
 
-console.log('\n=== CARPET: minimum service charge ($139) ===');
-range('nothing selected', S({}), 139, 139);
-range('1 room ($59) -> minimum', S({ rooms: 1 }), 139, 139);
-range('3 rooms = exactly the minimum', S({ rooms: 3 }), 139, 139);
-range('1 chair ($39) -> minimum', S({ items: { chair: 1 } }), 139, 139);
+console.log('\n=== STAIRS: $3 per individual step ===');
+range('1 step', S({ steps: 1 }), 3, 3);
+range('13 steps = 13 x $3', S({ steps: 13 }), 39, 39);
+range('16 steps = 16 x $3', S({ steps: 16 }), 48, 48);
+range('4 rooms + 14 steps = 169 + 42', S({ rooms: 4, steps: 14 }), 211, 211);
+eq('per_step is $3', P.carpet.per_step, 3);
+ok('old stairs_base removed', P.carpet.stairs_base === undefined);
 
-console.log('\n=== CARPET: tiers, hallways, stairs ===');
+console.log('\n=== CARPET tiers, hallways (no minimum at section level) ===');
 range('4 rooms', S({ rooms: 4 }), 169, 169);
 range('5 rooms', S({ rooms: 5 }), 199, 199);
 range('6 rooms = 199 + 35', S({ rooms: 6 }), 234, 234);
 range('8 rooms = 199 + 3x35', S({ rooms: 8 }), 304, 304);
 range('5 rooms + hallway', S({ rooms: 5, hallways: 1 }), 224, 224);
-range('5 rooms + 13 steps (base only)', S({ rooms: 5, steps: 13 }), 254, 254);
-range('5 rooms + 16 steps = 55 + 3x4', S({ rooms: 5, steps: 16 }), 266, 266);
+range('1 room alone, section level is raw', S({ rooms: 1 }), 59, 59);
 
 console.log('\n=== CARPET: upholstery, mattresses, treatments ===');
 range('sofa + loveseat', S({ items: { sofa: 1, loveseat: 1 } }), 208, 208);
@@ -53,28 +54,71 @@ range('4 rooms + pet odour', S({ rooms: 4, treatments: ['pet_odour'] }), 199, 22
 range('4 rooms + both treatments',
   S({ rooms: 4, treatments: ['heavy_stain', 'pet_odour'] }), 219, 269);
 
-console.log('\n=== CARPET MINIMUM: standalone only (owner rule, 29 Sep) ===');
-range('carpet alone, 1 room -> minimum applies', S({ rooms: 1 }), 139, 139);
-range('carpet + upholstery alone -> minimum applies',
-  S({ rooms: 1, items: { chair: 1 } }), 139, 139);
-{
-  // With a house clean in the same visit the minimum is waived.
-  const r = estimate(S({ rooms: 1, withOtherServices: true }), P);
-  eq('1 carpeted room WITH a house clean -> charged at $59, no minimum', r.low, 59);
-  ok('  minimum not flagged', r.minimumApplied === false);
-}
-{
-  const r = estimate(S({ items: { chair: 1 }, withOtherServices: true }), P);
-  eq('1 chair WITH a house clean -> charged at $39', r.low, 39);
-}
-{
-  const all = estimateAll({
-    package: true,
-    residential: { package: 'regular', bedrooms: 3, bathrooms: 2 },
-    carpetUph: true,
-    carpetState: { rooms: 1, items: {}, treatments: [] }
+/* ============ MINIMUM APPOINTMENT TOTAL — the owner's worked examples ==== */
+console.log('\n=== MINIMUM APPOINTMENT TOTAL (owner examples, 29 Sep) ===');
+function standalone(addons, carpet) {
+  return estimateAll({
+    addonsOnly: !!addons,
+    residential: { addons: addons || {} },
+    carpetUph: !!carpet,
+    carpetState: Object.assign({ rooms: 0, hallways: 0, steps: 0, items: {}, treatments: [] }, carpet || {})
   }, P);
-  eq('house clean + 1 carpeted room = 249 + 59 (not 249 + 139)', all.low, 308);
+}
+// $59 selected -> $139
+eq('$59 selected (1 carpeted room) -> $139', standalone(null, { rooms: 1 }).low, 139);
+// $100-ish selected -> $139   (2 rooms = $99)
+eq('$99 selected (2 carpeted rooms) -> $139', standalone(null, { rooms: 2 }).low, 139);
+// $138 selected -> $139  (sofa 119 + 6 steps 18 = 137 -> use chair+... ) use 119+19? build 138:
+eq('$138 selected (sofa $119 + 6 steps + $1?) -> uses 137', standalone(null, { items: { sofa: 1 }, steps: 6 }).low, 139);
+// exactly $139 -> $139
+eq('$139 selected (3 carpeted rooms) -> $139', standalone(null, { rooms: 3 }).low, 139);
+// $150+ -> actual
+eq('$169 selected (4 rooms) -> $169 actual', standalone(null, { rooms: 4 }).low, 169);
+eq('$199 selected (5 rooms) -> $199 actual', standalone(null, { rooms: 5 }).low, 199);
+
+console.log('\n--- standalone INDIVIDUAL SERVICES (no package at all) ---');
+eq('inside fridge alone ($59) -> $139', standalone({ fridge: true }).low, 139);
+eq('fridge + oven ($118) -> $139', standalone({ fridge: true, oven: true }).low, 139);
+eq('fridge + oven + cabinets ($193) -> $193 actual',
+  standalone({ fridge: true, oven: true, cabinets: true }).low, 193);
+eq('interior windows alone ($60) -> $139', standalone({ windows: true }).low, 139);
+ok('minimum is flagged when it bites', standalone({ fridge: true }).minimumApplied === true);
+ok('minimum NOT flagged once the total clears it',
+  standalone({ fridge: true, oven: true, cabinets: true }).minimumApplied === false);
+
+console.log('\n--- individual services COMBINED with carpet, still standalone ---');
+eq('fridge $59 + 1 carpeted room $59 = $118 -> $139',
+  standalone({ fridge: true }, { rooms: 1 }).low, 139);
+eq('fridge $59 + 4 carpeted rooms $169 = $228 -> $228 actual',
+  standalone({ fridge: true }, { rooms: 4 }).low, 228);
+
+console.log('\n--- WITH a cleaning package: no minimum, add-ons at normal price ---');
+{
+  const r = estimateAll({
+    package: true,
+    residential: { package: 'regular', bedrooms: 3, bathrooms: 2, addons: {} },
+    carpetUph: true,
+    carpetState: { rooms: 1, hallways: 0, steps: 0, items: {}, treatments: [] }
+  }, P);
+  eq('3 bed regular $249 + 1 carpeted room $59 = $308 (not $388)', r.low, 308);
+  ok('  minimum not applied', r.minimumApplied === false);
+}
+{
+  const r = estimateAll({
+    package: true,
+    residential: { package: 'regular', bedrooms: 3, bathrooms: 2, addons: { fridge: true } }
+  }, P);
+  eq('package + fridge add-on = 249 + 59, no extra $139', r.low, 308);
+}
+{
+  const r = estimateAll({
+    commercial: true,
+    commercialState: { propertyType: 'Office', sqft: 1200 },
+    carpetUph: true,
+    carpetState: { rooms: 1, hallways: 0, steps: 0, items: {}, treatments: [] }
+  }, P);
+  eq('commercial $199 + 1 carpeted room $59 = $258', r.low, 258);
+  ok('  minimum not applied to commercial bookings', r.minimumApplied === false);
 }
 
 /* ============================================================ RESIDENTIAL */
@@ -259,9 +303,7 @@ const checks = [
   ['carpet 5 rooms', P.carpet.room_tiers[4], 199],
   ['additional room', P.carpet.additional_room, 35],
   ['hallway', P.carpet.hallway, 25],
-  ['stairs base', P.carpet.stairs_base, 55],
-  ['stairs included steps', P.carpet.stairs_included_steps, 13],
-  ['additional step', P.carpet.additional_step, 4],
+  ['stairs per step', P.carpet.per_step, 3],
 ];
 const byKey = Object.fromEntries(P.items.map((i) => [i.key, i.price]));
 [['chair', 39], ['recliner', 69], ['loveseat', 89], ['sofa', 119],

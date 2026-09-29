@@ -255,8 +255,7 @@
     "disclaimer": "Starting estimate per visit. The final commercial quote depends on the property type, actual cleanable square footage, condition, cleaning frequency, number of washrooms, scope of work and any special cleaning requirements. Commercial carpet and upholstery extraction is quoted separately."
   },
   "minimum_service_charge": 139,
-  "_minimum_NOTE": "The $139 minimum applies when carpet/upholstery is booked on its own (including carpet + upholstery together). When a house or commercial clean is booked for the same visit the minimum is waived and the carpet items are charged as selected. Set minimum_applies_with_other_services to true to apply it to every carpet appointment regardless.",
-  "minimum_applies_with_other_services": false,
+  "_minimum_NOTE": "MINIMUM APPOINTMENT TOTAL, not an extra fee. It applies to standalone bookings — individual services, carpet and/or upholstery with no cleaning package. If the selected services total less than this, the customer pays this amount. Once the selection reaches or exceeds it, they pay the actual total. When a residential or commercial cleaning package is booked for the same visit the floor does not apply at all, and add-ons are simply added at their normal price.",
   "max_room_sqft": 250,
   "max_room_note": "A room counts as up to 250 sq ft (roughly 15 ft x 16 ft). Rooms larger than this, large basements and open-plan areas are measured and quoted separately.",
   "carpet": {
@@ -269,9 +268,8 @@
     ],
     "additional_room": 35,
     "hallway": 25,
-    "stairs_base": 55,
-    "stairs_included_steps": 13,
-    "additional_step": 4
+    "per_step": 3,
+    "_stairs_NOTE": "Stairs are charged per individual step: per_step x number of steps."
   },
   "items": [
     {
@@ -335,15 +333,22 @@
       "key": "heavy_stain",
       "label": "Heavy stain treatment",
       "min": 20,
-      "max": 40
+      "max": 40,
+      "estimated": true
     },
     {
       "key": "pet_odour",
       "label": "Pet odour treatment",
       "min": 30,
-      "max": 60
+      "max": 60,
+      "estimated": true
     }
   ],
   "custom_quote_label": "Custom Quote",
-  "disclaimer": "Estimated price only — not a guaranteed final price. Final pricing can change based on actual square footage, number of bathrooms, condition of the property, heavy buildup, excessive clutter, pet hair or odour, stains, access requirements and any additional work requested. A minimum service charge of $139 applies to carpet and upholstery appointments."
+  "disclaimer": "Estimated price only — not a guaranteed final price. Your final price may be higher or lower depending on the actual condition, size and services required. Any price adjustment will be confirmed with you before work begins.",
+  "minimum_label": "Minimum appointment total",
+  "minimum_explainer": "A $139 minimum applies to standalone appointments. This is not an extra fee — if your selected services come to less than $139 the total is $139, and once they reach $139 or more you simply pay the actual total. Booking these alongside a house or commercial clean? The minimum does not apply.",
+  "submit_disclaimer": "You are sending a quote request, not making a purchase. The figure above is an estimate based on what you selected. We confirm the final price with you before any work begins.",
+  "estimate_factors": "Final pricing can change with the actual square footage, number of bathrooms, property condition, level of buildup, stains, pet hair or odours, excessive clutter, accessibility, and any services added or removed.",
+  "treatments_note": "Heavy stain and pet odour treatments are estimated additional charges. The exact amount depends on the condition, so the estimate is shown as a range and confirmed on site."
 }

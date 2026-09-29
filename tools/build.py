@@ -591,7 +591,7 @@ def photo_caption(text):
     """Captions must not imply a completed job until there are real photos."""
     if claim("real_job_photos"):
         return text
-    return f"{text} &mdash; illustration"
+    return f"{text} &mdash; example"
 
 
 def photo_disclaimer():
@@ -599,10 +599,10 @@ def photo_disclaimer():
         return ""
     return f"""
 <div class="form-note mt-3" style="max-width:720px;margin-inline:auto">{icon('sparkle', 17)}
-  <span>The images on this page are illustrations, not photographs of completed
-  jobs. We are a new business and would rather show you drawings than pretend
-  someone else's photos are ours. Real before-and-after photos will replace
-  these as we complete work.</span></div>"""
+  <span>These are example images, not photographs of completed customer jobs.
+  Some have been edited or staged to show the difference a clean makes. Real
+  before-and-after photos from our own work will replace them as we complete
+  jobs.</span></div>"""
 
 
 def trust_strip():
@@ -694,6 +694,8 @@ def quote_form(form_id="quote-form", heading=True):
       </label>
     </div>
     <div class="field field--full">
+      <div class="form-note mt-1" style="margin-bottom:1rem">{icon('wallet', 17)}
+        <span>{PRICING['submit_disclaimer']} {PRICING['estimate_factors']}</span></div>
       <button class="btn btn--gold btn--lg btn--block" type="submit">
         {icon('sparkle', 17)} Send my free quote request
       </button>
@@ -803,6 +805,7 @@ def quote_calculator(preselect=("residential",)):
         ("commercial", "Commercial / office"),
         ("carpet", "Carpet cleaning"),
         ("upholstery", "Upholstery cleaning"),
+        ("individual", "Individual services only"),
     ]
     svc = "".join(
         f'<input type="checkbox" name="service" id="svc-{v}" value="{v}"'
@@ -864,8 +867,13 @@ def quote_calculator(preselect=("residential",)):
   <p class="field-hint mt-1">The first clean is always at the full price. The
   recurring discount applies from the second visit onwards, to the cleaning
   package only — never to add-ons.</p>
-  <span class="eyebrow mt-3">Add-ons</span>
+</div>
+
+<div data-panel="addons" hidden>
+  <span class="eyebrow mt-3">Individual services &amp; add-ons</span>
   <div class="treat-group">{addon_rows}</div>
+  <div class="form-note mt-2" id="minimum-note">{icon('wallet', 17)}
+    <span data-pricing-note="minimum_explainer">{p['minimum_explainer']}</span></div>
 </div>"""
 
     # ---- commercial panel ------------------------------------------------
@@ -973,9 +981,12 @@ def quote_calculator(preselect=("residential",)):
   <aside class="est-result">
     <span class="est-result__label">Estimated price</span>
     <div class="est-price" id="quote-price">&mdash;<small>Choose a service to start</small></div>
+    <p class="est-estimate-flag">{icon('sparkle', 14)} Estimate only &mdash; not a
+      guaranteed final price</p>
     <p class="est-sub" id="quote-note"></p>
     <div id="quote-recurring"></div>
     <ul class="est-break" id="quote-lines"></ul>
+    <p class="est-submit-note" data-pricing-note="submit_disclaimer">{p['submit_disclaimer']}</p>
     <a class="btn btn--gold btn--block" href="quote.html#quote-form" id="quote-cta">
       Send me this quote {icon('arrow', 16)}</a>
     <p class="est-foot" data-pricing-note="disclaimer">{p['disclaimer']}</p>
@@ -1017,7 +1028,7 @@ def carpet_rate_table():
     def m(n):
         return f"${n:,.0f}"
 
-    rows = [("Minimum service charge", "Applies to every appointment",
+    rows = [(p["minimum_label"], "Standalone appointments only — a floor, not a fee",
              m(p["minimum_service_charge"]))]
     for i, price in enumerate(p["carpet"]["room_tiers"]):
         rows.append((f"{i + 1} carpeted room" + ("" if i == 0 else "s"),
@@ -1026,10 +1037,8 @@ def carpet_rate_table():
         ("Each additional room", f"Up to {p['max_room_sqft']} sq ft",
          "+" + m(p["carpet"]["additional_room"])),
         ("Hallway", "Per hallway", "+" + m(p["carpet"]["hallway"])),
-        ("Stairs", f"Up to approx. {p['carpet']['stairs_included_steps']} steps",
-         "+" + m(p["carpet"]["stairs_base"])),
-        ("Each additional step", f"Beyond {p['carpet']['stairs_included_steps']} steps",
-         "+" + m(p["carpet"]["additional_step"])),
+        ("Stairs", "Per individual step",
+         "+" + m(p["carpet"]["per_step"]) + " each"),
     ]
     for i in p["items"]:
         rows.append((i["label"], i["group"],
@@ -1054,7 +1063,8 @@ def carpet_rate_table():
         <tbody id="carpet-rate-body">{body}</tbody>
       </table>
     </div>
-    <p class="field-hint mt-2" data-pricing-note="disclaimer">{p['disclaimer']}</p>
+    <p class="field-hint mt-2" data-pricing-note="minimum_explainer">{p['minimum_explainer']}</p>
+    <p class="field-hint mt-1" data-pricing-note="disclaimer">{p['disclaimer']}</p>
     <p class="field-hint mt-1" data-pricing-note="max_room">{p['max_room_note']}</p>
   </div>
 </section>
@@ -1230,7 +1240,7 @@ def faq_block(pairs, title="Questions people ask before booking"):
 # ================================================================== PAGES
 def build_home():
     services = [
-        ("service-residential.svg", "Residential Cleaning", "residential-cleaning.html",
+        ("photos/living-room.jpg", "Residential Cleaning", "residential-cleaning.html",
          "Weekly, bi-weekly, monthly or one-time. Kitchens, bathrooms, floors "
          "and dusting, worked through to a written checklist.",
          ["Regular &amp; recurring cleans", "Deep cleans", "Move in / move out", "Post-renovation"],
@@ -1292,7 +1302,7 @@ def build_home():
     </div>
     <div class="collage">
       <div class="collage__main">
-        <img src="assets/img/hero-living-room.svg" alt="Freshly cleaned living room in an Edmonton home" width="1200" height="900" fetchpriority="high">
+        <img src="assets/img/photos/living-room.jpg" alt="Freshly cleaned living room in an Edmonton home" width="1200" height="900" fetchpriority="high">
       </div>
       {hero_float_cards()}
     </div>
@@ -1371,7 +1381,7 @@ def build_home():
   <div class="shell">
     <div class="split">
       <div class="split__media reveal">
-        <img src="assets/img/gallery-kitchen.svg" alt="Detailed kitchen cleaning including backsplash and counters" loading="lazy" width="1200" height="900">
+        <img src="assets/img/photos/kitchen.jpg" alt="Detailed kitchen cleaning including backsplash and counters" loading="lazy" width="1200" height="900">
       </div>
       <div>
         <span class="eyebrow">Our standard</span>
@@ -1400,25 +1410,25 @@ def build_home():
     <div class="grid grid--2">
       <div class="reveal">
         <div class="ba">
-          <img class="ba__before" src="assets/img/before-carpet.svg" alt="Carpet before cleaning" loading="lazy" width="1200" height="900">
-          <img class="ba__after" src="assets/img/after-carpet.svg" alt="Carpet after professional hot-water extraction" loading="lazy" width="1200" height="900">
+          <img class="ba__before" src="assets/img/photos/ba-sofa-before.jpg" alt="Sofa upholstery before cleaning" loading="lazy" width="1200" height="900">
+          <img class="ba__after" src="assets/img/photos/ba-sofa-after.jpg" alt="Sofa upholstery after cleaning" loading="lazy" width="1200" height="900">
           <span class="ba__tag ba__tag--before">Before</span>
           <span class="ba__tag ba__tag--after">After</span>
           <span class="ba__handle"></span>
           <span class="ba__knob">{icon('chevrons', 18)}</span>
         </div>
-        <p class="field-hint mt-1">{photo_caption("Carpet, before and after hot-water extraction")}</p>
+        <p class="field-hint mt-1">{photo_caption("Upholstery, before and after cleaning")}</p>
       </div>
       <div class="reveal" data-delay="110">
         <div class="ba">
-          <img class="ba__before" src="assets/img/before-living-room.svg" alt="Living room before cleaning" loading="lazy" width="1200" height="900">
-          <img class="ba__after" src="assets/img/after-living-room.svg" alt="Living room after a full deep clean" loading="lazy" width="1200" height="900">
+          <img class="ba__before" src="assets/img/photos/ba-kitchen-before.jpg" alt="Kitchen before cleaning" loading="lazy" width="1200" height="900">
+          <img class="ba__after" src="assets/img/photos/ba-kitchen-after.jpg" alt="Kitchen after cleaning" loading="lazy" width="1200" height="900">
           <span class="ba__tag ba__tag--before">Before</span>
           <span class="ba__tag ba__tag--after">After</span>
           <span class="ba__handle"></span>
           <span class="ba__knob">{icon('chevrons', 18)}</span>
         </div>
-        <p class="field-hint mt-1">{photo_caption("Living room, before and after a deep clean")}</p>
+        <p class="field-hint mt-1">{photo_caption("Kitchen, before and after a clean")}</p>
       </div>
     </div>
     {photo_disclaimer()}
@@ -1547,7 +1557,7 @@ def build_residential():
         </div>
       </div>
       <div class="split__media reveal">
-        <img src="assets/img/service-residential.svg" alt="Clean, bright living room after a residential cleaning in Edmonton" loading="lazy" width="1200" height="900">
+        <img src="assets/img/photos/living-room.jpg" alt="Clean, bright living room after a residential cleaning in Edmonton" loading="lazy" width="1200" height="900">
       </div>
     </div>
   </div>
@@ -1835,8 +1845,8 @@ def build_carpet():
     </div>
     <div class="reveal" style="max-width:860px;margin-inline:auto">
       <div class="ba">
-        <img class="ba__before" src="assets/img/before-carpet.svg" alt="Carpet before hot-water extraction" loading="lazy" width="1200" height="900">
-        <img class="ba__after" src="assets/img/after-carpet.svg" alt="Carpet after hot-water extraction" loading="lazy" width="1200" height="900">
+        <img class="ba__before" src="assets/img/photos/ba-sofa-before.jpg" alt="Sofa upholstery before cleaning" loading="lazy" width="1200" height="900">
+        <img class="ba__after" src="assets/img/photos/ba-sofa-after.jpg" alt="Sofa upholstery after cleaning" loading="lazy" width="1200" height="900">
         <span class="ba__tag ba__tag--before">Before</span>
         <span class="ba__tag ba__tag--after">After</span>
         <span class="ba__handle"></span>
@@ -1905,13 +1915,13 @@ def build_carpet():
 
 def build_gallery():
     tiles = [
-        ("gallery-kitchen.svg", "Kitchen deep clean"),
-        ("gallery-bathroom.svg", "Bathroom detail"),
+        ("photos/kitchen.jpg", "Kitchen deep clean"),
+        ("photos/bathroom.jpg", "Bathroom detail"),
         ("gallery-office.svg", "Office after-hours clean"),
         ("gallery-carpet.svg", "Carpet extraction"),
         ("gallery-window.svg", "Interior windows"),
         ("gallery-hallway.svg", "Common areas and hallways"),
-        ("gallery-living.svg", "Move-out clean"),
+        ("photos/living-room.jpg", "Living areas"),
         ("service-commercial.svg", "Clinic and treatment rooms"),
     ]
     grid = "".join(
@@ -1936,23 +1946,23 @@ def build_gallery():
     <div class="grid grid--2">
       <div class="reveal">
         <div class="ba">
-          <img class="ba__before" src="assets/img/before-carpet.svg" alt="Carpet before cleaning" loading="lazy" width="1200" height="900">
-          <img class="ba__after" src="assets/img/after-carpet.svg" alt="Carpet after cleaning" loading="lazy" width="1200" height="900">
+          <img class="ba__before" src="assets/img/photos/ba-sofa-before.jpg" alt="Sofa upholstery before cleaning" loading="lazy" width="1200" height="900">
+          <img class="ba__after" src="assets/img/photos/ba-sofa-after.jpg" alt="Sofa upholstery after cleaning" loading="lazy" width="1200" height="900">
           <span class="ba__tag ba__tag--before">Before</span>
           <span class="ba__tag ba__tag--after">After</span>
           <span class="ba__handle"></span><span class="ba__knob">{icon('chevrons', 18)}</span>
         </div>
-        <p class="field-hint mt-1">{photo_caption("Carpet, before and after hot-water extraction")}</p>
+        <p class="field-hint mt-1">{photo_caption("Upholstery, before and after cleaning")}</p>
       </div>
       <div class="reveal" data-delay="110">
         <div class="ba">
-          <img class="ba__before" src="assets/img/before-living-room.svg" alt="Living room before cleaning" loading="lazy" width="1200" height="900">
-          <img class="ba__after" src="assets/img/after-living-room.svg" alt="Living room after cleaning" loading="lazy" width="1200" height="900">
+          <img class="ba__before" src="assets/img/photos/ba-kitchen-before.jpg" alt="Kitchen before cleaning" loading="lazy" width="1200" height="900">
+          <img class="ba__after" src="assets/img/photos/ba-kitchen-after.jpg" alt="Kitchen after cleaning" loading="lazy" width="1200" height="900">
           <span class="ba__tag ba__tag--before">Before</span>
           <span class="ba__tag ba__tag--after">After</span>
           <span class="ba__handle"></span><span class="ba__knob">{icon('chevrons', 18)}</span>
         </div>
-        <p class="field-hint mt-1">{photo_caption("Living room, before and after a deep clean")}</p>
+        <p class="field-hint mt-1">{photo_caption("Kitchen, before and after a clean")}</p>
       </div>
     </div>
   </div>
@@ -2146,7 +2156,7 @@ def build_areas():
     <div class="split" style="align-items:stretch">
       {primary_card}
       <div class="split__media reveal">
-        <img src="assets/img/gallery-living.svg" alt="Cleaning services in {B['primary_area']}, Alberta" loading="lazy" width="1200" height="900">
+        <img src="assets/img/photos/living-room.jpg" alt="Cleaning services in {B['primary_area']}, Alberta" loading="lazy" width="1200" height="900">
       </div>
     </div>
   </div>
