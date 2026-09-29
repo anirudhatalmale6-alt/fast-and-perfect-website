@@ -69,7 +69,7 @@
 <section class="section">
   <div class="shell">
     <div class="contact-grid">
-      <form class="est-panel" id="booking-form" data-prices="off" data-form novalidate>
+      <form class="est-panel" id="booking-form" data-form novalidate>
         <span class="eyebrow">Step 1 — the job</span>
         <div class="field field--full mt-1">
           <span class="field-label">Service</span>
@@ -99,11 +99,11 @@
         </div>
         <div class="field field--full mt-2">
           <span class="field-label">How often</span>
-          <div class="choice"><input type="radio" name="frequency" id="bfrq-onetime" value="onetime" checked><label for="bfrq-onetime">One-time</label><input type="radio" name="frequency" id="bfrq-monthly" value="monthly"><label for="bfrq-monthly">Monthly</label><input type="radio" name="frequency" id="bfrq-biweekly" value="biweekly"><label for="bfrq-biweekly">Every 2 weeks</label><input type="radio" name="frequency" id="bfrq-weekly" value="weekly"><label for="bfrq-weekly">Weekly</label></div>
+          <div class="choice"><input type="radio" name="frequency" id="bfrq-onetime" value="onetime" checked><label for="bfrq-onetime">One-time</label><input type="radio" name="frequency" id="bfrq-monthly" value="monthly"><label for="bfrq-monthly">Monthly<span class="tag">-10%</span></label><input type="radio" name="frequency" id="bfrq-biweekly" value="biweekly"><label for="bfrq-biweekly">Every 2 weeks<span class="tag">-15%</span></label><input type="radio" name="frequency" id="bfrq-weekly" value="weekly"><label for="bfrq-weekly">Weekly<span class="tag">-20%</span></label></div>
         </div>
         <div class="field field--full mt-2">
           <span class="field-label">Add-ons</span>
-          <div class="choice"><input type="checkbox" name="extras" id="bex-fridge" value="fridge"><label for="bex-fridge">Inside fridge</label><input type="checkbox" name="extras" id="bex-oven" value="oven"><label for="bex-oven">Inside oven</label><input type="checkbox" name="extras" id="bex-windows" value="windows"><label for="bex-windows">Interior windows</label><input type="checkbox" name="extras" id="bex-laundry" value="laundry"><label for="bex-laundry">Laundry</label><input type="checkbox" name="extras" id="bex-garage" value="garage"><label for="bex-garage">Garage</label><input type="checkbox" name="extras" id="bex-basement" value="basement"><label for="bex-basement">Finished basement</label></div>
+          <div class="choice"><input type="checkbox" name="extras" id="bex-fridge" value="fridge"><label for="bex-fridge">Inside fridge <span class="tag">+$59</span></label><input type="checkbox" name="extras" id="bex-oven" value="oven"><label for="bex-oven">Inside oven <span class="tag">+$59</span></label><input type="checkbox" name="extras" id="bex-cabinets" value="cabinets"><label for="bex-cabinets">Inside cabinets <span class="tag">+$75</span></label><input type="checkbox" name="extras" id="bex-windows" value="windows"><label for="bex-windows">Interior windows <span class="tag">from $60</span></label><input type="checkbox" name="extras" id="bex-laundry" value="laundry"><label for="bex-laundry">Laundry (per load) <span class="tag">+$30</span></label><input type="checkbox" name="extras" id="bex-garage" value="garage"><label for="bex-garage">Garage / balcony basic sweep <span class="tag">+$30</span></label><input type="checkbox" name="extras" id="bex-basement_fin" value="basement_fin"><label for="bex-basement_fin">Finished basement <span class="tag">from $65</span></label><input type="checkbox" name="extras" id="bex-basement_unfin" value="basement_unfin"><label for="bex-basement_unfin">Unfinished basement sweep <span class="tag">+$25</span></label><input type="checkbox" name="extras" id="bex-pet_hair" value="pet_hair"><label for="bex-pet_hair">Pet hair / extra pet cleanup <span class="tag">from $20</span></label><input type="checkbox" name="extras" id="bex-wall_washing" value="wall_washing"><label for="bex-wall_washing">Heavy wall washing <span class="tag">from $120</span></label></div>
         </div>
 
         <hr style="border:0;border-top:1px solid var(--line-soft);margin:2rem 0">
@@ -182,10 +182,11 @@
           <ul class="summary-list" id="booking-summary"></ul>
           <div class="summary-total">
             <span class="k">Price</span>
-            <span class="v" style="font-size:1.1rem">Quoted in writing</span>
+            <span class="v" style="font-size:1.05rem">Quoted in writing</span>
           </div>
-          <p class="field-hint mt-2">We confirm the slot and the price with you before
-          anything is booked in. Nothing is charged online.</p>
+          <p class="field-hint mt-2">Nothing is charged online. We confirm the slot
+          and the price with you first. For an instant estimate, use the
+          <a href="quote.html#calculator">quote calculator</a>.</p>
           <a class="btn btn--ghost btn--block mt-2" href="tel:+17805550142"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Prefer to call?</a>
         </div>
       </aside>

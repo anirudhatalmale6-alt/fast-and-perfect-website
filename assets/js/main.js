@@ -102,35 +102,9 @@
     write(read());
   });
 
-  /* ==================================================================
-     QUOTE ESTIMATOR
-     Rates are placeholders — confirm them with the owner before launch.
-     ================================================================== */
-  var RATES = {
-    // service -> [base, perBedroom, perBathroom, perSqftHundred]
-    residential: { base: 95, bed: 22, bath: 30, sqft100: 3.5 },
-    deep:        { base: 165, bed: 34, bath: 46, sqft100: 5.5 },
-    moveinout:   { base: 195, bed: 40, bath: 55, sqft100: 6.5 },
-    carpet:      { base: 89, bed: 42, bath: 0, sqft100: 4.0 },
-    commercial:  { base: 130, bed: 0, bath: 28, sqft100: 4.5 }
-  };
-  var FREQ = {
-    onetime: { mult: 1, label: 'One-time', off: 0 },
-    monthly: { mult: 0.9, label: 'Monthly', off: 10 },
-    biweekly: { mult: 0.85, label: 'Every 2 weeks', off: 15 },
-    weekly: { mult: 0.8, label: 'Weekly', off: 20 }
-  };
-  var EXTRA_PRICE = {
-    fridge: 35, oven: 35, windows: 55, laundry: 25, garage: 45, basement: 40
-  };
-  var EXTRA_LABEL = {
-    fridge: 'Inside fridge', oven: 'Inside oven', windows: 'Interior windows',
-    laundry: 'Laundry', garage: 'Garage', basement: 'Finished basement'
-  };
-
-  var money = function (n) {
-    return '$' + Math.round(n).toLocaleString('en-CA');
-  };
+  /* Pricing lives in pricing-engine.js + assets/data/pricing.json.
+     There is deliberately no second copy of the rates in this file — a
+     duplicate set silently drifted out of date once already. */
 
   /* Visible text of the checked radio in `name`, read from its own <label>
      so the summary always matches what the customer actually sees. */
@@ -146,88 +120,46 @@
     return clone.textContent.trim().replace(/\s+/g, ' ');
   }
 
-  function readEstimator(form) {
-    var service = (form.querySelector('input[name="service"]:checked') || {}).value || 'residential';
-    var freq = (form.querySelector('input[name="frequency"]:checked') || {}).value || 'onetime';
-    var beds = parseInt((form.querySelector('input[name="bedrooms"]') || {}).value || '0', 10);
-    var baths = parseInt((form.querySelector('input[name="bathrooms"]') || {}).value || '0', 10);
-    var sqft = parseInt((form.querySelector('[name="sqft"]') || {}).value || '0', 10);
-    var extras = $$('input[name="extras"]:checked', form).map(function (i) { return i.value; });
-    return { service: service, freq: freq, beds: beds, baths: baths, sqft: sqft, extras: extras };
-  }
-
-  function priceEstimate(s) {
-    var r = RATES[s.service] || RATES.residential;
-    var subtotal = r.base + r.bed * s.beds + r.bath * s.baths;
-    if (s.sqft > 0) subtotal += (s.sqft / 100) * r.sqft100;
-
-    var extrasTotal = s.extras.reduce(function (sum, key) {
-      return sum + (EXTRA_PRICE[key] || 0);
-    }, 0);
-    subtotal += extrasTotal;
-
-    var f = FREQ[s.freq] || FREQ.onetime;
-    var total = subtotal * f.mult;
-
-    return {
-      subtotal: subtotal,
-      extrasTotal: extrasTotal,
-      discountPct: f.off,
-      discountAmt: subtotal - total,
-      total: total,
-      low: total * 0.9,
-      high: total * 1.15,
-      freqLabel: f.label
-    };
-  }
-
-  /* The quote estimator now lives in quote-calculator.js, driven by
-     assets/data/pricing.json. Only the booking page still uses the
-     helpers below. */
-
   /* ================= Booking summary ================= */
   var bookForm = $('#booking-form');
   if (bookForm) {
     var sumList = $('#booking-summary');
-    var sumTotal = $('#booking-total');
-    var bookPricesOff = bookForm.getAttribute('data-prices') === 'off';
 
     var labelFor = function (name) { return labelOf(bookForm, name); };
 
     var renderBooking = function () {
-      var state = readEstimator(bookForm);
-      var p = priceEstimate(state);
       var date = (bookForm.querySelector('[name="date"]') || {}).value || '';
-      var slot = labelFor('slot');
+      var beds = parseInt((bookForm.querySelector('input[name="bedrooms"]') || {}).value || '0', 10);
+      var baths = parseInt((bookForm.querySelector('input[name="bathrooms"]') || {}).value || '0', 10);
+      var sqft = (bookForm.querySelector('[name="sqft"]') || {}).value || '';
+      var extras = $$('input[name="extras"]:checked', bookForm).map(function (i) {
+        var lab = bookForm.querySelector('label[for="' + i.id + '"]');
+        return lab ? lab.textContent.trim().replace(/\s+/g, ' ') : i.value;
+      });
 
       var rows = [
-        ['Service', labelFor('service') || '—'],
-        ['Frequency', bookPricesOff ? labelFor('frequency') : p.freqLabel],
-        ['Property', state.beds + ' bed · ' + state.baths + ' bath' + (state.sqft ? ' · ' + state.sqft + ' sq ft' : '')]
+        ['Service', labelFor('service')],
+        ['Frequency', labelFor('frequency')],
+        ['Property', beds + ' bed · ' + baths + ' bath' + (sqft ? ' · ' + sqft + ' sq ft' : '')]
       ];
-      if (state.extras.length) {
-        rows.push(['Add-ons', state.extras.map(function (k) { return EXTRA_LABEL[k] || k; }).join(', ')]);
-      }
+      if (extras.length) rows.push(['Add-ons', extras.join(', ')]);
       if (date) {
         var d = new Date(date + 'T12:00:00');
         rows.push(['Date', isNaN(d) ? date : d.toLocaleDateString('en-CA', {
           weekday: 'short', month: 'short', day: 'numeric'
         })]);
       }
-      if (slot) rows.push(['Arrival window', slot]);
+      var slot = labelFor('slot');
+      if (slot && slot !== '—') rows.push(['Arrival window', slot]);
 
       if (sumList) {
         sumList.innerHTML = rows.map(function (r) {
           return '<li><span>' + r[0] + '</span><b>' + r[1] + '</b></li>';
         }).join('');
       }
-      if (sumTotal && !bookPricesOff) {
-        sumTotal.innerHTML = money(p.low) + '&thinsp;&ndash;&thinsp;' + money(p.high);
-      }
+
       var hidden = bookForm.querySelector('[name="estimate"]');
-      if (hidden && !bookPricesOff) {
-        hidden.value = money(p.low) + '–' + money(p.high) + ' ' + CONFIG.CURRENCY;
-      }
+      if (hidden) hidden.value = '';
     };
 
     bookForm.addEventListener('change', renderBooking);
