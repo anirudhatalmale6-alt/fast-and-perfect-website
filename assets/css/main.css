@@ -108,7 +108,11 @@ body {
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
+  /* `clip` — NOT `hidden`. overflow-x:hidden resolves overflow-y to `auto`,
+     which turns <body> into a scroll container and silently breaks every
+     position:sticky descendant. `clip` gives the same safety net without
+     creating a scroll container. */
+  overflow-x: clip;
 }
 
 /* paper grain — atmosphere without an image request */
@@ -122,6 +126,10 @@ body::before {
   mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
 }
+
+/* Any `display` rule beats the [hidden] attribute's default display:none,
+   so an element with display:flex stays visible while "hidden". Restore it. */
+[hidden] { display: none !important; }
 
 img, svg, video { max-width: 100%; height: auto; display: block; }
 
@@ -934,6 +942,84 @@ ul.trust-row { list-style: none; margin: 0; padding-left: 0; padding-top: 1.6rem
   font-size: 1.02rem;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- Admin price editor ---------- */
+.admin-block + .admin-block {
+  margin-top: 2.25rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--line-soft);
+}
+.admin-block h2 { margin-bottom: 0.15rem; }
+#price-editor code {
+  font-size: 0.88em;
+  background: var(--sage);
+  padding: 0.1em 0.38em;
+  border-radius: 5px;
+}
+
+/* ---------- Quantity rows (carpet & upholstery calculator) ---------- */
+.qty-group {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+}
+.qty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0.7rem 0.55rem 0.9rem;
+  border: 1.5px solid var(--line-soft);
+  border-radius: 12px;
+  background: var(--bone);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.qty.is-active {
+  border-color: var(--pine);
+  background: var(--paper);
+}
+.qty__label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+  min-width: 0;
+}
+.qty__price {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+  margin-top: 0.1rem;
+}
+.qty.is-active .qty__price { color: var(--pine); }
+
+.stepper--sm {
+  max-width: 128px;
+  flex: none;
+  border-radius: 9px;
+}
+.stepper--sm button { width: 36px; height: 38px; font-size: 1.15rem; }
+.stepper--sm output { font-size: 0.95rem; }
+
+.treat-group { display: grid; gap: 0.4rem; margin-top: 0.85rem; }
+.treat {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.7rem 0.9rem;
+  border: 1.5px solid var(--line-soft);
+  border-radius: 12px;
+  background: var(--bone);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.treat:hover { border-color: var(--sage-deep); }
+.treat input { margin-top: 0.15em; width: 18px; height: 18px; accent-color: var(--pine); flex: none; }
+.treat:has(input:checked) { border-color: var(--pine); background: var(--paper); }
+.treat input:focus-visible { outline: 3px solid var(--marigold); outline-offset: 2px; }
+.treat .qty__price { display: inline; margin-left: 0.4rem; }
 
 /* result */
 .est-result {

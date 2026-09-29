@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /admin-pricing.html
 
 Sitemap: https://fastandperfect.ca/sitemap.xml

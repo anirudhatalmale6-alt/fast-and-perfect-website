@@ -1,0 +1,49 @@
+{
+  "_README": [
+    "SINGLE SOURCE OF TRUTH FOR ALL CARPET & UPHOLSTERY PRICING.",
+    "",
+    "Edit the numbers in this file and re-upload it — the calculator and the",
+    "published rate table both update immediately. Nothing else needs changing.",
+    "",
+    "Easiest way to edit: open /admin-pricing.html on the site, change the",
+    "prices in the form, then click 'Download pricing.json' and upload the new",
+    "file over this one.",
+    "",
+    "All prices are in CAD and are ESTIMATES, not guaranteed final prices."
+  ],
+
+  "currency": "CAD",
+
+  "minimum_service_charge": 139,
+
+  "max_room_sqft": 250,
+  "max_room_note": "A room counts as up to 250 sq ft (roughly 15 ft x 16 ft). Rooms larger than this, basements and open-plan areas are measured and quoted separately.",
+
+  "carpet": {
+    "room_tiers": [59, 99, 139, 169, 199],
+    "additional_room": 35,
+    "hallway": 25,
+    "stairs_base": 55,
+    "stairs_included_steps": 13,
+    "additional_step": 4
+  },
+
+  "items": [
+    { "key": "chair",     "group": "Upholstery", "label": "Fabric chair",      "price": 39 },
+    { "key": "recliner",  "group": "Upholstery", "label": "Recliner / armchair", "price": 69 },
+    { "key": "loveseat",  "group": "Upholstery", "label": "Loveseat (2-seat)", "price": 89 },
+    { "key": "sofa",      "group": "Upholstery", "label": "Sofa (3-seat)",     "price": 119 },
+    { "key": "sectional", "group": "Upholstery", "label": "Sectional sofa",    "price": 159, "from": true },
+    { "key": "ottoman",   "group": "Upholstery", "label": "Ottoman",           "price": 35 },
+    { "key": "twin",      "group": "Mattresses", "label": "Twin mattress",     "price": 69 },
+    { "key": "queen",     "group": "Mattresses", "label": "Queen mattress",    "price": 99 },
+    { "key": "king",      "group": "Mattresses", "label": "King mattress",     "price": 119 }
+  ],
+
+  "treatments": [
+    { "key": "heavy_stain", "label": "Heavy stain treatment", "min": 20, "max": 40 },
+    { "key": "pet_odour",   "label": "Pet odour treatment",   "min": 30, "max": 60 }
+  ],
+
+  "disclaimer": "Estimated price only. Final pricing may vary depending on the size and condition of the carpet or upholstery, the level of staining, pet issues and the amount of cleaning required. A minimum service charge of $139 applies to every appointment."
+}
