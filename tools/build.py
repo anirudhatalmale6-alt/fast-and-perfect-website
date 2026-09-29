@@ -225,12 +225,21 @@ def drawer_html(current):
     return "".join(out)
 
 
+# The logo already contains the company name and the tagline, so repeating
+# them as text beside it would duplicate the wording.
 BRAND = (
-    '<a class="brand" href="index.html" aria-label="{legal} home">'
-    '<img class="brand__mark" src="assets/img/logo-mark.svg" alt="" width="40" height="40">'
-    '<span class="brand__text"><span class="brand__name">{name}</span>'
-    '<span class="brand__tag">{tag}</span></span></a>'
-).format(legal=B["legal_name"], name=B["name"], tag=B["tagline"] + " · " + B["city"])
+    '<a class="brand" href="index.html">'
+    '<img class="brand__logo" src="assets/img/logo-header.png" '
+    'alt="{legal} — cleaning services in {city}" width="360" height="144">'
+    '</a>'
+).format(legal=B["legal_name"], city=B["city"])
+
+FOOTER_BRAND = (
+    '<a class="brand brand--footer" href="index.html">'
+    '<img class="brand__logo" src="assets/img/logo-footer.png" '
+    'alt="{legal}" width="320" height="128" loading="lazy">'
+    '</a>'
+).format(legal=B["legal_name"])
 
 
 def header(current):
@@ -270,7 +279,7 @@ def footer():
   <div class="shell shell--wide">
     <div class="footer-grid">
       <div>
-        {BRAND}
+        {FOOTER_BRAND}
         <p class="footer-about">Locally owned cleaning company serving {B['city']} as our
         primary service area, plus {len(B['secondary_areas'])} surrounding communities
         across the Edmonton region. Residential, commercial and carpet cleaning.</p>
@@ -340,7 +349,7 @@ def local_business_schema():
         "telephone": B["phone_href"],
         "email": B["email"],
         "image": B["domain"] + "/assets/img/og-cover.svg",
-        "logo": B["domain"] + "/assets/img/logo-mark.svg",
+        "logo": B["domain"] + "/assets/img/logo.png",
         # priceRange and paymentAccepted are business claims — Google reads and
         # displays them, so they stay out until the owner confirms both.
         **({"priceRange": "$$",
@@ -458,7 +467,7 @@ def page(slug, title, description, body, schemas=None, current=None, keywords=No
 {kw}
 <link rel="canonical" href="{canonical}">
 <meta name="robots" content="{robots}">
-<meta name="theme-color" content="#1c4b3a">
+<meta name="theme-color" content="#001a33">
 <meta name="geo.region" content="CA-AB">
 <meta name="geo.placename" content="{B['city']}">
 <meta name="geo.position" content="{B['lat']};{B['lng']}">
@@ -474,8 +483,8 @@ def page(slug, title, description, body, schemas=None, current=None, keywords=No
 <meta name="twitter:title" content="{title}">
 <meta name="twitter:description" content="{description}">
 <meta name="twitter:image" content="{B['domain']}/assets/img/og-cover.svg">
-<link rel="icon" href="assets/img/logo-mark.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="assets/img/logo-mark.svg">
+<link rel="icon" href="assets/img/logo-icon.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/img/logo-icon.png">
 <link rel="preload" href="assets/fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/karla-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/main.css">
@@ -1991,15 +2000,14 @@ def build_about():
       <div class="prose">
         <span class="eyebrow">Who we are</span>
         <h2 class="h-lg">Cleaning, done<br><span class="tilt">properly</span>.</h2>
-        <p class="lede mt-2">{B['legal_name']} provides residential, commercial and
-        carpet cleaning across {B['city']} and {len(B['secondary_areas'])} surrounding
-        communities.</p>
-        <p class="mt-2">We're a local business, which means you're dealing with the
-        people actually doing the work — not a call centre in another province. When you
-        ring, someone here answers.</p>
-        <p>Every job starts with a written quote and an agreed task list, so there's no
-        ambiguity about what's included or what it costs. If something isn't right, tell
-        us and we'll put it right.</p>
+        <p class="lede mt-2">{B['legal_name']} is a locally operated cleaning company
+        serving {B['city']} and surrounding areas. Our goal is to provide reliable,
+        detailed and professional cleaning services with clear pricing and an easy
+        booking experience.</p>
+        <p class="mt-2">We serve residential and commercial clients and focus on
+        delivering consistent, high-quality service every time.</p>
+        <p>Every job starts with a written quote and an agreed task list, so there is no
+        ambiguity about what is included or what it costs.</p>
       </div>
     </div>
   </div>

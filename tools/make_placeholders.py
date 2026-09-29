@@ -15,17 +15,20 @@ import random
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "site", "assets", "img")
 
+# Matches the Fast & Perfect logo: navy, bright blue, silver.
 PAL = {
-    "bone": "#f6f2ea",
-    "paper": "#fffdf8",
-    "ink": "#131c17",
-    "pine": "#1c4b3a",
-    "pine_deep": "#0f2e23",
-    "pine_lift": "#276250",
-    "sage": "#dce6dd",
-    "sage_deep": "#b6cbbc",
-    "marigold": "#e3a02c",
-    "marigold_soft": "#f0c67d",
+    "bone": "#eef3f8",
+    "paper": "#ffffff",
+    "ink": "#0d1b2a",
+    "pine": "#0c4a8a",
+    "pine_deep": "#001a33",
+    "pine_lift": "#1461ae",
+    "sage": "#d7e5f3",
+    "sage_deep": "#9db9d6",
+    "marigold": "#35a7ff",
+    "marigold_soft": "#8fcaff",
+    "foliage": "#3f7a52",      # plants stay green — a blue plant looks broken
+    "foliage_dark": "#2d5a3c",
 }
 
 W, H = 1200, 900
@@ -70,12 +73,12 @@ def grain(op=0.05):
 # ---------------------------------------------------------------- scenes
 def living_room(dull=False):
     """Bright living room: window, light beam, sofa, rug, plant."""
-    wall_a = "#e6ddd0" if dull else PAL["bone"]
-    wall_b = "#cfc6b6" if dull else "#e9e3d6"
-    floor_a = "#9a8c76" if dull else "#d9c9ad"
-    floor_b = "#7d715e" if dull else "#c2ad8c"
+    wall_a = "#dfe3e8" if dull else PAL["bone"]
+    wall_b = "#c6ccd4" if dull else "#dde5ee"
+    floor_a = "#8d8f93" if dull else "#c2ccd8"
+    floor_b = "#74767a" if dull else "#a5b3c3"
     light = 0.10 if dull else 0.34
-    sofa = "#8d9b90" if dull else PAL["sage_deep"]
+    sofa = "#8b96a2" if dull else PAL["sage_deep"]
     accent = "#a98c52" if dull else PAL["marigold"]
 
     s = [head(extra="")]
@@ -129,10 +132,10 @@ def living_room(dull=False):
     s.append(f'<rect x="558" y="686" width="12" height="46" rx="5" fill="{PAL["pine_deep"]}" opacity="0.32"/>')
 
     # plant
-    s.append(f'<path d="M980 600 L1020 600 L1012 700 L988 700 Z" fill="{accent}" opacity="0.8"/>')
+    s.append(f'<path d="M980 600 L1020 600 L1012 700 L988 700 Z" fill="#9aa3ad" opacity="0.85"/>')
     for i, (dx, dy, rr) in enumerate([(-46, -70, 40), (0, -104, 46), (44, -66, 38), (-22, -40, 30), (26, -36, 30)]):
         s.append(f'<ellipse cx="{1000 + dx}" cy="{600 + dy}" rx="{rr}" ry="{rr * 0.72}" '
-                 f'fill="{PAL["pine"] if not dull else "#5c6b5f"}" opacity="{0.55 + i * 0.07:.2f}" '
+                 f'fill="{PAL["foliage"] if not dull else "#5c6b5f"}" opacity="{0.55 + i * 0.07:.2f}" '
                  f'transform="rotate({dx * 0.4} {1000 + dx} {600 + dy})"/>')
 
     # wall art — filled, so it reads as a framed picture rather than a
@@ -218,8 +221,8 @@ def office():
 
 def carpet(dull=False):
     """Close-up carpet with a vacuum track."""
-    base_a = "#8e8370" if dull else "#c9b9a0"
-    base_b = "#6f6757" if dull else "#b3a288"
+    base_a = "#87898d" if dull else "#c3ccd6"
+    base_b = "#6b6d71" if dull else "#aab6c3"
     s = [head()]
     s.append(defs("c", base_a, base_b))
     s.append(f'<rect width="{W}" height="{H}" fill="url(#c)"/>')
@@ -432,10 +435,10 @@ def og_image():
     s.append(f'<circle cx="120" cy="590" r="240" fill="{PAL["sage_deep"]}" opacity="0.14"/>')
     s.append(sparkle(1040, 470, 60, PAL["marigold"], 0.9))
     s.append(sparkle(1140, 560, 28, PAL["marigold"], 0.6))
-    s.append(f'<text x="80" y="230" font-family="Georgia,serif" font-size="88" font-weight="700" '
-             f'fill="{PAL["bone"]}">Fast and Perfect</text>')
-    s.append(f'<text x="80" y="310" font-family="Georgia,serif" font-size="52" font-style="italic" '
-             f'fill="{PAL["marigold"]}">Cleaning Services</text>')
+    s.append(f'<text x="80" y="230" font-family="Helvetica,Arial,sans-serif" font-size="86" '
+             f'font-weight="bold" fill="{PAL["bone"]}">FAST &amp; PERFECT</text>')
+    s.append(f'<text x="80" y="300" font-family="Helvetica,Arial,sans-serif" font-size="44" '
+             f'letter-spacing="6" fill="{PAL["marigold"]}">CLEANING SERVICES</text>')
     s.append(f'<rect x="80" y="360" width="90" height="4" fill="{PAL["marigold"]}"/>')
     s.append(f'<text x="80" y="430" font-family="Helvetica,Arial,sans-serif" font-size="30" '
              f'fill="{PAL["sage_deep"]}">Residential · Commercial · Carpet</text>')
@@ -464,7 +467,6 @@ FILES = {
     "gallery-hallway.svg": hallway,
     "gallery-living.svg": lambda: living_room(False),
     "about-crew.svg": crew,
-    "logo-mark.svg": logo_mark,
     "og-cover.svg": og_image,
 }
 
