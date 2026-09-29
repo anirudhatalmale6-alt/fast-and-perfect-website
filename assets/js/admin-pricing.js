@@ -88,8 +88,10 @@
       'anything over the top band, shows as a Custom Quote.');
 
     html += section('Minimum &amp; room size',
-      numField('Minimum service charge ($)', p.minimum_service_charge,
-        'minimum_service_charge', 'Applied to every appointment.') +
+      numField('Minimum appointment total ($)', p.minimum_service_charge,
+        'minimum_service_charge',
+        'A floor for standalone bookings, never an added fee. Does not apply ' +
+        'when a cleaning package is booked.') +
       numField('Maximum room size (sq ft)', p.max_room_sqft, 'max_room_sqft',
         'Anything larger is quoted separately.', 10));
 
@@ -102,12 +104,8 @@
       numField('Each additional room ($)', p.carpet.additional_room,
         'carpet.additional_room') +
       numField('Hallway ($)', p.carpet.hallway, 'carpet.hallway') +
-      numField('Stairs — base price ($)', p.carpet.stairs_base,
-        'carpet.stairs_base') +
-      numField('Steps included in the base', p.carpet.stairs_included_steps,
-        'carpet.stairs_included_steps') +
-      numField('Each additional step ($)', p.carpet.additional_step,
-        'carpet.additional_step'));
+      numField('Stairs — per individual step ($)', p.carpet.per_step,
+        'carpet.per_step', 'Charged as price x number of steps.'));
 
     ['Upholstery', 'Mattresses'].forEach(function (group) {
       var inner = p.items.map(function (item, i) {

@@ -27,12 +27,13 @@
   /* Which panel each service needs. Treatments are shared by carpet and
      upholstery, so they appear once when either is selected. */
   var SERVICE_PANELS = {
-    residential: ['home'],
-    deep: ['home'],
-    moveinout: ['home'],
+    residential: ['home', 'addons'],
+    deep: ['home', 'addons'],
+    moveinout: ['home', 'addons'],
     commercial: ['commercial'],
     carpet: ['carpet', 'treatments'],
-    upholstery: ['upholstery', 'treatments']
+    upholstery: ['upholstery', 'treatments'],
+    individual: ['addons']          // add-ons with no package behind them
   };
   var PRICED = { carpet: true, upholstery: true };
 
@@ -122,8 +123,9 @@
       PRICING.items.forEach(function (it) { items[it.key] = qty(it.key); });
     }
 
+    var wantsIndividual = services.indexOf('individual') !== -1;
     var addons = {};
-    if (homePick && PRICING) {
+    if ((homePick || wantsIndividual) && PRICING) {
       PRICING.residential.addons.forEach(function (a) {
         if (a.qty) {
           var n = qty(a.key);
@@ -138,6 +140,7 @@
     return {
       services: services,
       homePick: homePick,
+      wantsIndividual: wantsIndividual,
       wantsCarpet: wantsCarpet,
       wantsUph: wantsUph,
       beds: qty('__beds'),
@@ -212,6 +215,7 @@
 
     var all = window.FPCarpet.estimateAll({
       package: !!s.homePick,
+      addonsOnly: s.wantsIndividual,
       residential: {
         package: s.homePick ? HOME_KEY[s.homePick] : 'regular',
         bedrooms: s.beds, bathrooms: s.baths,
@@ -264,6 +268,11 @@
             window.FPCarpet.money(PRICING.minimum_service_charge) + '</b></li>');
         }
       });
+      if (all.minimumApplied) {
+        html.push('<li class="est-break__min"><span>' +
+          (PRICING.minimum_label || 'Minimum appointment total') +
+          '</span><b>' + window.FPCarpet.money(all.minimum) + '</b></li>');
+      }
       linesEl.innerHTML = html.join('');
     }
 
@@ -287,6 +296,17 @@
     // note
     if (noteEl) {
       var notes = [];
+      // The appointment floor needs explaining the moment it bites, or it
+      // reads like a surprise surcharge.
+      if (all.minimumApplied) {
+        notes.push('Your selection comes to ' +
+          window.FPCarpet.money(all.sections.reduce(function (t, x) {
+            return t + (x.result.low || 0); }, 0)) +
+          ', which is under the ' + window.FPCarpet.money(all.minimum) +
+          ' minimum for a standalone appointment, so the total shown is the ' +
+          'minimum. This is not an extra fee — once your selection reaches ' +
+          window.FPCarpet.money(all.minimum) + ' you pay the actual total.');
+      }
       if (s.services.filter(function (x) { return HOME_RANK[x]; }).length > 1) {
         notes.push('You picked more than one house-cleaning package, so this is ' +
           'priced as the most thorough one.');
@@ -396,9 +416,7 @@
       }
       var map = {
         __hallways: '+' + window.FPCarpet.money(p.carpet.hallway) + ' each',
-        __steps: window.FPCarpet.money(p.carpet.stairs_base) + ' up to ' +
-          p.carpet.stairs_included_steps + ' steps, then +' +
-          window.FPCarpet.money(p.carpet.additional_step) + '/step',
+        __steps: window.FPCarpet.money(p.carpet.per_step) + ' per step',
         __rooms: 'up to ' + p.max_room_sqft + ' sq ft each'
       };
       if (map[key]) el.textContent = map[key];
@@ -418,7 +436,8 @@
     var push = function (a, b, c) {
       rows.push('<tr><td>' + a + '</td><td>' + b + '</td><td>' + c + '</td></tr>');
     };
-    push('Minimum service charge', 'Applies to every appointment',
+    push(p.minimum_label || 'Minimum appointment total',
+      'Standalone appointments only — a floor, not a fee',
       window.FPCarpet.money(p.minimum_service_charge));
     p.carpet.room_tiers.forEach(function (price, i) {
       push((i + 1) + (i === 0 ? ' carpeted room' : ' carpeted rooms'),
@@ -428,10 +447,8 @@
     push('Each additional room', 'Up to ' + p.max_room_sqft + ' sq ft',
       '+' + window.FPCarpet.money(p.carpet.additional_room));
     push('Hallway', 'Per hallway', '+' + window.FPCarpet.money(p.carpet.hallway));
-    push('Stairs', 'Up to approx. ' + p.carpet.stairs_included_steps + ' steps',
-      '+' + window.FPCarpet.money(p.carpet.stairs_base));
-    push('Each additional step', 'Beyond ' + p.carpet.stairs_included_steps + ' steps',
-      '+' + window.FPCarpet.money(p.carpet.additional_step));
+    push('Stairs', 'Per individual step',
+      '+' + window.FPCarpet.money(p.carpet.per_step) + ' each');
     (p.items || []).forEach(function (i) {
       push(i.label, i.group, (i.from ? 'from ' : '') + window.FPCarpet.money(i.price));
     });
