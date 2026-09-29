@@ -99,6 +99,12 @@ CLAIMS = {
     # carpet & upholstery rates but not his residential/commercial ones.
     "show_prices": False,         # residential + commercial (NOT confirmed)
     "show_prices_carpet": True,   # confirmed in writing, see pricing.json
+
+    # The business has not completed jobs yet, so the gallery must not claim
+    # them. While this is False the images are labelled as illustrations and
+    # no location or "recent job" wording is used. Flip it to True only once
+    # real photographs of real jobs replace the artwork.
+    "real_job_photos": False,
 }
 
 # Carpet & upholstery prices live in one JSON file so the owner can change
@@ -563,6 +569,24 @@ def cta_band(title=None, text=None):
   </div>
 </section>
 """
+
+
+def photo_caption(text):
+    """Captions must not imply a completed job until there are real photos."""
+    if claim("real_job_photos"):
+        return text
+    return f"{text} &mdash; illustration"
+
+
+def photo_disclaimer():
+    if claim("real_job_photos"):
+        return ""
+    return f"""
+<div class="form-note mt-3" style="max-width:720px;margin-inline:auto">{icon('sparkle', 17)}
+  <span>The images on this page are illustrations, not photographs of completed
+  jobs. We are a new business and would rather show you drawings than pretend
+  someone else's photos are ours. Real before-and-after photos will replace
+  these as we complete work.</span></div>"""
 
 
 def trust_strip():
@@ -1244,7 +1268,7 @@ def build_home():
           <span class="ba__handle"></span>
           <span class="ba__knob">{icon('chevrons', 18)}</span>
         </div>
-        <p class="field-hint mt-1">Carpet extraction — Mill Woods, Edmonton</p>
+        <p class="field-hint mt-1">{photo_caption("Carpet, before and after hot-water extraction")}</p>
       </div>
       <div class="reveal" data-delay="110">
         <div class="ba">
@@ -1255,9 +1279,10 @@ def build_home():
           <span class="ba__handle"></span>
           <span class="ba__knob">{icon('chevrons', 18)}</span>
         </div>
-        <p class="field-hint mt-1">Move-out deep clean — Terwillegar, Edmonton</p>
+        <p class="field-hint mt-1">{photo_caption("Living room, before and after a deep clean")}</p>
       </div>
     </div>
+    {photo_disclaimer()}
     <div class="center mt-4">
       <a class="btn btn--ghost" href="gallery.html">See more of our work {icon('arrow', 16)}</a>
     </div>
@@ -1754,14 +1779,14 @@ def build_carpet():
 
 def build_gallery():
     tiles = [
-        ("gallery-kitchen.svg", "Kitchen deep clean — Glenora"),
-        ("gallery-bathroom.svg", "Bathroom detail — Oliver"),
-        ("gallery-office.svg", "Office after-hours clean — Downtown"),
-        ("gallery-carpet.svg", "Carpet extraction — Mill Woods"),
-        ("gallery-window.svg", "Interior windows — Windermere"),
-        ("gallery-hallway.svg", "Common area — St. Albert"),
-        ("gallery-living.svg", "Move-out clean — Terwillegar"),
-        ("service-commercial.svg", "Clinic disinfection — Sherwood Park"),
+        ("gallery-kitchen.svg", "Kitchen deep clean"),
+        ("gallery-bathroom.svg", "Bathroom detail"),
+        ("gallery-office.svg", "Office after-hours clean"),
+        ("gallery-carpet.svg", "Carpet extraction"),
+        ("gallery-window.svg", "Interior windows"),
+        ("gallery-hallway.svg", "Common areas and hallways"),
+        ("gallery-living.svg", "Move-out clean"),
+        ("service-commercial.svg", "Clinic and treatment rooms"),
     ]
     grid = "".join(
         f'<figure class="tile reveal" data-delay="{i * 50}">'
@@ -1771,8 +1796,8 @@ def build_gallery():
     )
     body = page_head(
         "Our work",
-        'Rooms we\'ve <span class="tilt">reset</span>.',
-        "A look at recent jobs across Edmonton and area — homes, offices, carpets "
+        'What we <span class="tilt">clean</span>.',
+        "The services we provide across Edmonton and area — homes, offices, carpets "
         "and move-outs.",
         [("Home", "index.html"), ("Our Work", None)],
     ) + f"""
@@ -1791,7 +1816,7 @@ def build_gallery():
           <span class="ba__tag ba__tag--after">After</span>
           <span class="ba__handle"></span><span class="ba__knob">{icon('chevrons', 18)}</span>
         </div>
-        <p class="field-hint mt-1">Living room carpet, five years no professional clean — Mill Woods</p>
+        <p class="field-hint mt-1">{photo_caption("Carpet, before and after hot-water extraction")}</p>
       </div>
       <div class="reveal" data-delay="110">
         <div class="ba">
@@ -1801,7 +1826,7 @@ def build_gallery():
           <span class="ba__tag ba__tag--after">After</span>
           <span class="ba__handle"></span><span class="ba__knob">{icon('chevrons', 18)}</span>
         </div>
-        <p class="field-hint mt-1">Move-out deep clean, tenant handover — Terwillegar</p>
+        <p class="field-hint mt-1">{photo_caption("Living room, before and after a deep clean")}</p>
       </div>
     </div>
   </div>
@@ -1810,10 +1835,11 @@ def build_gallery():
 <section class="section section--tight">
   <div class="shell shell--wide">
     <div class="section-head">
-      <span class="eyebrow">Recent jobs</span>
+      <span class="eyebrow">{"Recent jobs" if claim("real_job_photos") else "What we clean"}</span>
       <h2 class="h-lg">Around the city.</h2>
     </div>
     <div class="gallery-grid">{grid}</div>
+    {photo_disclaimer()}
   </div>
 </section>
 
