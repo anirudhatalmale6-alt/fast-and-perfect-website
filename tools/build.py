@@ -97,8 +97,10 @@ CLAIMS = {
 
     # Pricing is gated per service, because the owner has confirmed his
     # carpet & upholstery rates but not his residential/commercial ones.
-    "show_prices": False,         # residential + commercial (NOT confirmed)
-    "show_prices_carpet": True,   # confirmed in writing, see pricing.json
+    # All pricing confirmed in writing by the owner; the numbers themselves
+    # live in site/assets/data/pricing.json.
+    "show_prices": True,          # residential + commercial
+    "show_prices_carpet": True,   # carpet + upholstery
 
     # The business has not completed jobs yet, so the gallery must not claim
     # them. While this is False the images are labelled as illustrations and
@@ -131,11 +133,14 @@ def claim(key):
 
 # Recurring-discount percentages are a pricing claim, so they only appear
 # on the frequency chips once pricing is confirmed.
-DISCOUNT_TAG = (
-    ['<span class="tag">-10%</span>', '<span class="tag">-15%</span>',
-     '<span class="tag">-20%</span>']
-    if CLAIMS.get("show_prices") else ["", "", ""]
-)
+# Recurring discounts come from pricing.json, keyed by schedule, so the
+# booking page can never advertise a percentage the calculator does not apply.
+_DISC = {r["key"]: r["discount"] for r in PRICING["residential"]["recurring"]}
+DISCOUNT_TAG = {
+    k: (f'<span class="tag">-{_DISC.get(k, 0)}%</span>'
+        if CLAIMS.get("show_prices") and _DISC.get(k) else "")
+    for k in ("monthly", "biweekly", "weekly", "onetime")
+}
 
 
 # ---------------------------------------------------------------- icons
@@ -533,11 +538,12 @@ def hero_float_cards():
       </div>""")
 
     if claim("show_prices"):
-        cards.append("""
+        cards.append(f"""
       <div class="float-card float-card--quote">
-        <span class="fc-label">3 bed / 2 bath</span>
-        <div class="fc-price">$165</div>
-        <p class="fc-note">Typical recurring clean in Edmonton — quoted in writing.</p>
+        <span class="fc-label">Homes from</span>
+        <div class="fc-price">${min(t['regular'] for t in PRICING['residential']['tiers'])}</div>
+        <p class="fc-note">Starting price for a regular clean. Priced properly for
+        your home, and quoted in writing.</p>
       </div>""")
     else:
         cards.append(f"""
@@ -772,11 +778,13 @@ def quote_calculator(preselect=("residential",)):
     """ONE calculator for every service.
 
     The customer ticks the services they need and only the relevant questions
-    appear. Several can be combined — carpet + upholstery build a single
-    priced quote; residential/commercial ride along as "quoted separately"
-    until their prices are confirmed.
+    appear. Several can be combined into a single quote. Every price comes
+    from assets/data/pricing.json at runtime.
     """
     p = PRICING
+    res = p["residential"]
+    comm = p["commercial"]
+
     services = [
         ("residential", "Regular house cleaning"),
         ("deep", "Deep cleaning"),
@@ -793,25 +801,24 @@ def quote_calculator(preselect=("residential",)):
     )
 
     # ---- house-cleaning panel -------------------------------------------
-    extras = [
-        ("fridge", "Inside fridge", 35), ("oven", "Inside oven", 35),
-        ("windows", "Interior windows", 55), ("laundry", "Laundry", 25),
-        ("garage", "Garage", 45), ("basement", "Finished basement", 40),
-    ]
-    ext = "".join(
-        f'<input type="checkbox" name="extras" id="ex-{v}" value="{v}">'
-        f'<label for="ex-{v}">{l}'
-        + (f' <span class="tag">+${pr}</span>' if claim("show_prices") else "")
+    addon_rows = ""
+    for a in res["addons"]:
+        if a.get("qty"):
+            addon_rows += qty_row(a["key"], a["label"], "addon-" + a["key"], 0, 10)
+        else:
+            addon_rows += (
+                f'<label class="treat" data-addon="{a["key"]}">'
+                f'<input type="checkbox" name="addon" value="{a["key"]}">'
+                f'<span>{a["label"]}'
+                f'<span class="qty__price" data-price-for="addon-{a["key"]}"></span>'
+                f"</span></label>"
+            )
+    freq_opts = "".join(
+        f'<input type="radio" name="frequency" id="frq-{r["key"]}" value="{r["key"]}"'
+        f'{" checked" if i == 0 else ""}><label for="frq-{r["key"]}">{r["label"]}'
+        + (f' <span class="tag">-{r["discount"]}%</span>' if r["discount"] else "")
         + "</label>"
-        for v, l, pr in extras
-    )
-    freqs = [("onetime", "One-time", ""), ("monthly", "Monthly", DISCOUNT_TAG[0]),
-             ("biweekly", "Every 2 weeks", DISCOUNT_TAG[1]),
-             ("weekly", "Weekly", DISCOUNT_TAG[2])]
-    frq = "".join(
-        f'<input type="radio" name="frequency" id="frq-{v}" value="{v}"'
-        f'{" checked" if i == 0 else ""}><label for="frq-{v}">{l}{t}</label>'
-        for i, (v, l, t) in enumerate(freqs)
+        for i, r in enumerate(res["recurring"])
     )
 
     home_panel = f"""
@@ -819,8 +826,9 @@ def quote_calculator(preselect=("residential",)):
   <span class="eyebrow mt-3">Your home</span>
   <div class="field-grid mt-1">
     <div class="field">
-      <span class="field-label">Bedrooms</span>
-      <div class="stepper" data-qty="__beds" data-min="0" data-max="10">
+      <span class="field-label">Bedrooms <span class="field-hint"
+        style="text-transform:none;letter-spacing:0">(0 = studio)</span></span>
+      <div class="stepper" data-qty="__beds" data-min="0" data-max="12">
         <button type="button" data-step="down" aria-label="Fewer bedrooms">&minus;</button>
         <output>3</output><input type="hidden" value="3">
         <button type="button" data-step="up" aria-label="More bedrooms">+</button>
@@ -828,7 +836,7 @@ def quote_calculator(preselect=("residential",)):
     </div>
     <div class="field">
       <span class="field-label">Bathrooms</span>
-      <div class="stepper" data-qty="__baths" data-min="0" data-max="10">
+      <div class="stepper" data-qty="__baths" data-min="0" data-max="12">
         <button type="button" data-step="down" aria-label="Fewer bathrooms">&minus;</button>
         <output>2</output><input type="hidden" value="2">
         <button type="button" data-step="up" aria-label="More bathrooms">+</button>
@@ -841,20 +849,20 @@ def quote_calculator(preselect=("residential",)):
     </div>
   </div>
   <span class="eyebrow mt-3">How often</span>
-  <div class="choice mt-1">{frq}</div>
+  <div class="choice mt-1">{freq_opts}</div>
+  <p class="field-hint mt-1">The first clean is always at the full price. The
+  recurring discount applies from the second visit onwards, to the cleaning
+  package only — never to add-ons.</p>
   <span class="eyebrow mt-3">Add-ons</span>
-  <div class="choice mt-1">{ext}</div>
+  <div class="treat-group">{addon_rows}</div>
 </div>"""
 
     # ---- commercial panel ------------------------------------------------
-    prop_types = ["Office", "Medical or dental clinic", "Retail store",
-                  "Salon or spa", "Restaurant or café", "Warehouse or shop",
-                  "Gym or studio", "Common areas / property management",
-                  "Other"]
-    prop_opts = "".join(f"<option>{t}</option>" for t in prop_types)
-    comm_freqs = ["One-time", "Nightly", "2–3 times a week", "Weekly",
-                  "Every 2 weeks", "Monthly"]
-    comm_freq_opts = "".join(f"<option>{t}</option>" for t in comm_freqs)
+    prop_opts = "".join(
+        f"<option{' selected' if i == 0 else ''}>{t}</option>"
+        for i, t in enumerate(comm["standard_types"] + comm["custom_types"])
+    )
+    comm_freq_opts = "".join(f"<option>{t}</option>" for t in comm["frequencies"])
     commercial_panel = f"""
 <div data-panel="commercial" hidden>
   <span class="eyebrow mt-3">Your premises</span>
@@ -878,14 +886,13 @@ def quote_calculator(preselect=("residential",)):
              placeholder="e.g. 2" inputmode="numeric">
     </div>
     <div class="field field--full">
-      <label for="q-comm-notes">Anything else we should know?</label>
+      <label for="q-comm-notes">Access hours, alarm, parking, special instructions</label>
       <textarea id="q-comm-notes" name="comm_notes"
-        placeholder="Access hours, alarm, loading bay, areas to avoid…"></textarea>
+        placeholder="After 6pm only, alarm code on arrival, loading bay at the rear…"></textarea>
     </div>
   </div>
   <div class="form-note mt-2">{icon('clock', 17)}
-    <span>Commercial work is priced after a short site walkthrough, so we quote
-    the actual job rather than guessing from a form.</span></div>
+    <span>{comm['disclaimer']}</span></div>
 </div>"""
 
     # ---- carpet panel ----------------------------------------------------
@@ -938,10 +945,9 @@ def quote_calculator(preselect=("residential",)):
 </div>"""
 
     inline = json.dumps(p, ensure_ascii=False)
-    general = "on" if claim("show_prices") else "off"
 
     return f"""
-<div class="estimator" id="quote-calculator" data-prices-general="{general}">
+<div class="estimator" id="quote-calculator">
   <script type="application/json" id="fp-pricing-inline">{inline}</script>
   <form class="est-panel" novalidate>
     <div class="field field--full">
@@ -954,10 +960,10 @@ def quote_calculator(preselect=("residential",)):
   </form>
 
   <aside class="est-result">
-    <span class="est-result__label">Your estimate</span>
+    <span class="est-result__label">Estimated price</span>
     <div class="est-price" id="quote-price">&mdash;<small>Choose a service to start</small></div>
     <p class="est-sub" id="quote-note"></p>
-    <ul class="est-break" id="quote-services"></ul>
+    <div id="quote-recurring"></div>
     <ul class="est-break" id="quote-lines"></ul>
     <a class="btn btn--gold btn--block" href="quote.html#quote-form" id="quote-cta">
       Send me this quote {icon('arrow', 16)}</a>
@@ -1044,6 +1050,128 @@ def carpet_rate_table():
 """
 
 
+def residential_rate_table():
+    """Published from pricing.json, so it can never disagree with the
+    calculator."""
+    if not claim("show_prices"):
+        return ""
+    res = PRICING["residential"]
+
+    def m(n):
+        return f"${n:,.0f}"
+
+    rows = "".join(
+        f"<tr><td>{t['label']}</td><td>up to {t['max_bathrooms']} bathroom"
+        f"{'' if t['max_bathrooms'] == 1 else 's'}</td>"
+        f"<td>{m(t['regular'])}</td><td>{m(t['deep'])}</td><td>{m(t['moveinout'])}</td></tr>"
+        if t["max_bathrooms"] < 90 else
+        f"<tr><td>{t['label']}</td><td>3+ bathrooms</td>"
+        f"<td>{m(t['regular'])}</td><td>{m(t['deep'])}</td><td>{m(t['moveinout'])}</td></tr>"
+        for t in res["tiers"]
+    )
+    rows += (
+        f"<tr><td>Larger homes</td><td>&mdash;</td>"
+        f"<td colspan=\"3\">{PRICING['custom_quote_label']}</td></tr>"
+    )
+
+    addons = "".join(
+        f"<tr><td>{a['label']}</td><td>{'Per unit' if a.get('qty') else 'Per visit'}</td>"
+        f"<td>{'from ' if a.get('from') else '+'}{m(a['price'])}</td></tr>"
+        for a in res["addons"]
+    )
+    disc = "".join(
+        f"<tr><td>{r['label']}</td><td>From the second visit</td>"
+        f"<td>{r['discount']}% off the cleaning package</td></tr>"
+        for r in res["recurring"] if r["discount"]
+    )
+
+    return f"""
+<section class="section">
+  <div class="shell">
+    <div class="section-head">
+      <span class="eyebrow">Price guide</span>
+      <h2 class="h-lg">Residential starting prices.</h2>
+      <p class="lede">Published, so you know roughly where you stand before you
+      call. Every job is confirmed with a written quote.</p>
+    </div>
+    <div class="table-wrap reveal">
+      <table class="rate-table">
+        <thead><tr><th>Home size</th><th>Bathrooms</th><th>Regular</th>
+        <th>Deep clean</th><th>Move in / out</th></tr></thead>
+        <tbody>{rows}</tbody>
+      </table>
+    </div>
+
+    <h3 class="h-sm mt-4">Add-ons</h3>
+    <div class="table-wrap reveal mt-2">
+      <table class="rate-table">
+        <thead><tr><th>Add-on</th><th>Charged</th><th>Price</th></tr></thead>
+        <tbody>{addons}</tbody>
+      </table>
+    </div>
+    <p class="field-hint mt-2">Add-ons already covered by a deep clean or a
+    move in / move out are never charged twice &mdash; the calculator marks
+    them as included.</p>
+
+    <h3 class="h-sm mt-4">Recurring cleaning</h3>
+    <div class="table-wrap reveal mt-2">
+      <table class="rate-table">
+        <thead><tr><th>Schedule</th><th>Applies</th><th>Discount</th></tr></thead>
+        <tbody>{disc}</tbody>
+      </table>
+    </div>
+    <p class="field-hint mt-2">The first clean is at the full price. The discount
+    applies to the cleaning package only, never to add-ons, carpet, upholstery
+    or commercial work.</p>
+    <p class="field-hint mt-1" data-pricing-note="disclaimer">{PRICING['disclaimer']}</p>
+  </div>
+</section>
+"""
+
+
+def commercial_rate_table():
+    if not claim("show_prices"):
+        return ""
+    c = PRICING["commercial"]
+
+    def m(n):
+        return f"${n:,.0f}"
+
+    rows = "".join(
+        f"<tr><td>{b['label']}</td><td>Standard office or retail</td>"
+        f"<td>starting at {m(b['price'])}</td></tr>"
+        for b in c["bands"]
+    )
+    rows += (
+        f"<tr><td>{c['over_band_label']}</td><td>Measured on site</td>"
+        f"<td>{PRICING['custom_quote_label']}</td></tr>"
+    )
+    for t in c["custom_types"]:
+        rows += (f"<tr><td>{t}</td><td>Specialised premises</td>"
+                 f"<td>{PRICING['custom_quote_label']}</td></tr>")
+
+    return f"""
+<section class="section">
+  <div class="shell">
+    <div class="section-head">
+      <span class="eyebrow">Price guide</span>
+      <h2 class="h-lg">Commercial starting prices.</h2>
+      <p class="lede">Per visit, for standard offices and retail. Specialised
+      premises are quoted after a site walkthrough rather than from a form.</p>
+    </div>
+    <div class="table-wrap reveal">
+      <table class="rate-table">
+        <thead><tr><th>Premises</th><th>Type</th><th>Estimated price per visit</th></tr></thead>
+        <tbody>{rows}</tbody>
+      </table>
+    </div>
+    <p class="field-hint mt-2">{c['disclaimer']}</p>
+    <p class="field-hint mt-1">{c['recurring_note']}</p>
+  </div>
+</section>
+"""
+
+
 def rate_table_section(c1, c2, c3, rows, title, lede, footnote):
     """A published rate table is a pricing claim — it disappears entirely
     until the owner confirms his numbers."""
@@ -1095,12 +1223,12 @@ def build_home():
          "Weekly, bi-weekly, monthly or one-time. Kitchens, bathrooms, floors "
          "and dusting, worked through to a written checklist.",
          ["Regular &amp; recurring cleans", "Deep cleans", "Move in / move out", "Post-renovation"],
-         "$135", "show_prices"),
+         f"${min(t['regular'] for t in PRICING['residential']['tiers'])}", "show_prices"),
         ("service-commercial.svg", "Commercial Cleaning", "commercial-cleaning.html",
          "Offices, clinics, salons, retail and small warehouses across Edmonton. "
          "Scheduled around your opening hours.",
          ["Offices &amp; clinics", "Retail &amp; salons", "Common areas", "Nightly or weekly schedules"],
-         "$160", "show_prices"),
+         f"${min(b['price'] for b in PRICING['commercial']['bands'])}", "show_prices"),
         ("service-carpet.svg", "Carpet &amp; Upholstery", "carpet-cleaning.html",
          "Hot-water extraction for carpets, area rugs, sofas and mattresses — "
          "traffic lanes, spills and pet accidents.",
@@ -1438,11 +1566,7 @@ def build_residential():
   </div>
 </section>
 
-{rate_table_section("Home size", "Typical duration", "Price range", rows,
-                    "Typical Edmonton prices.",
-                    "Recurring plans are priced lower than one-off visits. Your written "
-                    "quote is the price you pay.",
-                    "Prices in CAD, GST-exclusive.")}
+{residential_rate_table()}
 
 {calculator_section(
     ("residential",), title="Price your home.",
@@ -1593,6 +1717,8 @@ def build_commercial():
 </section>
 
 {reviews_section(3, 3, heading="From local businesses.")}
+
+{commercial_rate_table()}
 
 {calculator_section(
     ("commercial",), eyebrow="Free quote",
@@ -2187,40 +2313,37 @@ def build_book():
         f'{" checked" if i == 0 else ""}><label for="bsvc-{v}">{l}</label>'
         for i, (v, l) in enumerate(services)
     )
-    freqs = [("onetime", "One-time", ""), ("monthly", "Monthly", DISCOUNT_TAG[0]),
-             ("biweekly", "Every 2 weeks", DISCOUNT_TAG[1]),
-             ("weekly", "Weekly", DISCOUNT_TAG[2])]
+    freqs = [("onetime", "One-time", DISCOUNT_TAG["onetime"]),
+             ("monthly", "Monthly", DISCOUNT_TAG["monthly"]),
+             ("biweekly", "Every 2 weeks", DISCOUNT_TAG["biweekly"]),
+             ("weekly", "Weekly", DISCOUNT_TAG["weekly"])]
     frq = "".join(
         f'<input type="radio" name="frequency" id="bfrq-{v}" value="{v}"'
         f'{" checked" if i == 0 else ""}><label for="bfrq-{v}">{l}{t}</label>'
         for i, (v, l, t) in enumerate(freqs)
     )
-    extras = [("fridge", "Inside fridge", 35), ("oven", "Inside oven", 35),
-              ("windows", "Interior windows", 55), ("laundry", "Laundry", 25),
-              ("garage", "Garage", 45), ("basement", "Finished basement", 40)]
+    # add-ons come from pricing.json — never a second hard-coded list that
+    # can drift away from the real prices
     ext = "".join(
-        f'<input type="checkbox" name="extras" id="bex-{v}" value="{v}">'
-        f'<label for="bex-{v}">{l}'
-        + (f' <span class="tag">+${p}</span>' if claim("show_prices") else "")
+        f'<input type="checkbox" name="extras" id="bex-{a["key"]}" value="{a["key"]}">'
+        f'<label for="bex-{a["key"]}">{a["label"]}'
+        + (f' <span class="tag">{"from " if a.get("from") else "+"}${a["price"]}</span>'
+           if claim("show_prices") else "")
         + "</label>"
-        for v, l, p in extras
+        for a in PRICING["residential"]["addons"]
     )
     book_prices_attr = "" if claim("show_prices") else ' data-prices="off"'
-    if claim("show_prices"):
-        summary_total = f"""
-          <div class="summary-total">
-            <span class="k">Estimated</span>
-            <span class="v" id="booking-total">$0</span>
-          </div>
-          <p class="field-hint mt-2">Estimate only — confirmed in writing before we start.</p>"""
-    else:
-        summary_total = """
+    # The booking page requests a slot; pricing belongs to the calculator,
+    # which is the single source. A second price display here is exactly how
+    # the two drift apart.
+    summary_total = """
           <div class="summary-total">
             <span class="k">Price</span>
-            <span class="v" style="font-size:1.1rem">Quoted in writing</span>
+            <span class="v" style="font-size:1.05rem">Quoted in writing</span>
           </div>
-          <p class="field-hint mt-2">We confirm the slot and the price with you before
-          anything is booked in. Nothing is charged online.</p>"""
+          <p class="field-hint mt-2">Nothing is charged online. We confirm the slot
+          and the price with you first. For an instant estimate, use the
+          <a href="quote.html#calculator">quote calculator</a>.</p>"""
 
     body = page_head(
         "Book online",

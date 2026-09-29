@@ -22,8 +22,7 @@ These are stand-in values. Everything else is production-ready.
 | Service areas | Edmonton + 19 secondary | `tools/build.py` → `BUSINESS["primary_area"]` / `secondary_areas` |
 | Photos | Generated illustrations | `site/assets/img/` |
 | Reviews | **Removed** — none published | `tools/build.py` → `TESTIMONIALS` |
-| Residential / commercial prices | **Removed** — not confirmed | `tools/build.py` → `CLAIMS["show_prices"]` |
-| Carpet & upholstery prices | **Live** — owner-confirmed | `site/assets/data/pricing.json` |
+| All pricing | **Live** — owner-confirmed | `site/assets/data/pricing.json` |
 | Insurance / bonding / guarantees | **Removed** — none published | `tools/build.py` → `CLAIMS` |
 | Form delivery | Demo mode | `site/assets/js/main.js` → `CONFIG.FORM_ENDPOINT` |
 
@@ -131,11 +130,12 @@ Requires Python 3 only — no packages to install.
 
 ---
 
-## Changing carpet & upholstery prices
+## Changing prices
 
-Every carpet, upholstery, mattress and treatment price lives in **one file**:
-`site/assets/data/pricing.json`. The estimate calculator *and* the published
-rate table both read from it, so they can never disagree.
+**Every price on the site lives in one file**: `site/assets/data/pricing.json` —
+residential packages and add-ons, recurring discounts, commercial bands, carpet,
+upholstery, mattresses and treatments. The calculator, all three published rate
+tables and the booking page read from it, so they cannot disagree.
 
 Two ways to change a price:
 
@@ -146,13 +146,23 @@ Two ways to change a price:
 
 The pricing rules encoded there:
 
-- A minimum service charge applies to **every** appointment.
-- Carpeted rooms are **tiered** (1–5 rooms priced individually), then a flat
-  rate per additional room.
-- Stairs are a base price covering the first N steps, then per step after.
-- Treatments are quoted as a **range**, which makes the whole estimate a range.
-- A "room" has a maximum square footage; larger rooms, basements and open-plan
-  areas are quoted separately.
+**Residential** — tiered by bedroom count, each tier with a bathroom cap.
+Exceed the cap (or the largest tier) and the customer sees **Custom Quote**
+rather than a guess. Add-ons already covered by a deep or move-out clean are
+shown as *included* and never charged twice. The recurring discount applies to
+the base package only, from the second visit — never to add-ons, and never to
+the first clean.
+
+**Commercial** — banded by square footage, for standard offices and retail
+only. Specialised premises (clinics, restaurants, warehouses, gyms, common
+areas) and anything over the top band are **Custom Quote**. Recurring schedules
+are captured in the enquiry but never auto-discounted.
+
+**Carpet & upholstery** — a minimum service charge on every appointment;
+carpeted rooms tiered 1–5 then per extra room; stairs a base covering the first
+N steps then per step; treatments quoted as a **range**, which makes the whole
+estimate a range; a maximum room size, above which rooms, large basements and
+open-plan areas are quoted separately.
 
 Run `node tools/test_pricing.js` after changing prices — it re-checks the
 calculator against every published price and the worked examples.

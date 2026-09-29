@@ -98,36 +98,57 @@
     return clone.textContent.trim().replace(/\s+/g, ' ');
   }
 
+  /* Home packages are tiers of the same service. If more than one is ticked
+     we price the most comprehensive and say so, rather than silently picking. */
+  var HOME_RANK = { residential: 1, deep: 2, moveinout: 3 };
+  var HOME_KEY = { residential: 'regular', deep: 'deep', moveinout: 'moveinout' };
+
+  function chosenHomePackage(services) {
+    var best = null;
+    services.forEach(function (s) {
+      if (HOME_RANK[s] && (!best || HOME_RANK[s] > HOME_RANK[best])) best = s;
+    });
+    return best;
+  }
+
   function readState() {
     var services = selectedServices();
     var wantsCarpet = services.indexOf('carpet') !== -1;
     var wantsUph = services.indexOf('upholstery') !== -1;
+    var homePick = chosenHomePackage(services);
 
     var items = {};
     if (wantsUph && PRICING) {
       PRICING.items.forEach(function (it) { items[it.key] = qty(it.key); });
     }
 
+    var addons = {};
+    if (homePick && PRICING) {
+      PRICING.residential.addons.forEach(function (a) {
+        if (a.qty) {
+          var n = qty(a.key);
+          if (n > 0) addons[a.key] = n;
+        } else {
+          var el = $('input[name="addon"][value="' + a.key + '"]', root);
+          if (el && el.checked && !hiddenPanel(el)) addons[a.key] = true;
+        }
+      });
+    }
+
     return {
       services: services,
+      homePick: homePick,
       wantsCarpet: wantsCarpet,
       wantsUph: wantsUph,
-      // home
       beds: qty('__beds'),
       baths: qty('__baths'),
       sqft: val('sqft'),
-      frequency: checkedLabel('frequency'),
-      extras: $$('input[name="extras"]:checked', root)
-        .filter(function (i) { return !hiddenPanel(i); })
-        .map(function (i) {
-          var lab = $('label[for="' + i.id + '"]', root);
-          return lab ? lab.textContent.trim() : i.value;
-        }),
-      // commercial
+      frequency: (($('input[name="frequency"]:checked', root) || {}).value) || 'onetime',
+      addons: addons,
       commSqft: val('comm_sqft'),
       commType: val('comm_type'),
       commFreq: val('comm_frequency'),
-      // carpet
+      commWash: val('comm_washrooms'),
       rooms: wantsCarpet ? qty('__rooms') : 0,
       hallways: wantsCarpet ? qty('__hallways') : 0,
       steps: wantsCarpet ? qty('__steps') : 0,
@@ -140,128 +161,197 @@
     };
   }
 
+  /* Mark add-ons already covered by the chosen package, so the customer can
+     see they will not be charged twice. */
+  function markIncludedAddons(s) {
+    if (!PRICING) return;
+    var pkg = s.homePick ? HOME_KEY[s.homePick] : null;
+    var included = (pkg && PRICING.residential.included_in &&
+      PRICING.residential.included_in[pkg]) || [];
+    $$('[data-addon]', root).forEach(function (el) {
+      var key = el.getAttribute('data-addon');
+      var isIn = included.indexOf(key) !== -1;
+      el.classList.toggle('is-included', isIn);
+      var priceEl = $('.qty__price', el);
+      if (!priceEl) return;
+      if (isIn) {
+        priceEl.textContent = 'included';
+      } else {
+        var a = PRICING.residential.addons.filter(function (x) { return x.key === key; })[0];
+        if (a) priceEl.textContent = (a.from ? 'from ' : '') + window.FPCarpet.money(a.price);
+      }
+    });
+  }
+
   /* -------------------------------------------------------------- render */
   function render() {
     if (!PRICING) return;
     syncPanels();
 
     var s = readState();
+    markIncludedAddons(s);
+
     var priceEl = $('#quote-price', root);
     var linesEl = $('#quote-lines', root);
     var noteEl = $('#quote-note', root);
-    var summaryEl = $('#quote-services', root);
+    var recEl = $('#quote-recurring', root);
+    var footEl = $('.est-foot', root);
 
-    // which chosen services can be priced right now, and which cannot
-    var pricedPicked = s.services.filter(function (x) { return PRICED[x]; });
-    var unpricedPicked = s.services.filter(function (x) { return !PRICED[x]; });
-
-    if (summaryEl) {
-      summaryEl.innerHTML = s.services.length
-        ? s.services.map(function (x) {
-          return '<li><span>' + serviceLabel(x) + '</span><b>' +
-            (PRICED[x] ? 'estimated below' : 'quoted separately') + '</b></li>';
-        }).join('')
-        : '';
+    if (!s.services.length) {
+      if (priceEl) priceEl.innerHTML = '&mdash;<small>Choose a service to start</small>';
+      if (linesEl) linesEl.innerHTML = '';
+      if (recEl) recEl.innerHTML = '';
+      if (noteEl) {
+        noteEl.textContent = 'Tick the services you need — the questions change ' +
+          'to match, so you only answer what is relevant to you.';
+      }
+      if (footEl) footEl.textContent = PRICING.disclaimer;
+      writeDetail(s, null);
+      return;
     }
 
-    var lines = [];
-    var result = null;
-
-    if (pricedPicked.length) {
-      result = window.FPCarpet.estimate({
+    var all = window.FPCarpet.estimateAll({
+      package: !!s.homePick,
+      residential: {
+        package: s.homePick ? HOME_KEY[s.homePick] : 'regular',
+        bedrooms: s.beds, bathrooms: s.baths,
+        addons: s.addons, recurring: s.frequency
+      },
+      commercial: s.services.indexOf('commercial') !== -1,
+      commercialState: {
+        propertyType: s.commType, sqft: s.commSqft, frequency: s.commFreq
+      },
+      carpetUph: s.wantsCarpet || s.wantsUph,
+      carpetState: {
         rooms: s.rooms, hallways: s.hallways, steps: s.steps,
         items: s.items, treatments: s.treatments
-      }, PRICING);
-      lines = result.lines;
-    }
+      }
+    }, PRICING);
 
-    // headline figure
+    var CUSTOM = PRICING.custom_quote_label || 'Custom Quote';
+
+    // headline
     if (priceEl) {
-      if (!s.services.length) {
-        priceEl.innerHTML = '&mdash;<small>Choose a service to start</small>';
-      } else if (!pricedPicked.length) {
-        priceEl.innerHTML = 'Quoted<small>in writing, free</small>';
+      if (!all.anyPriced && all.anyCustom) {
+        priceEl.innerHTML = CUSTOM + '<small>we will price this properly for you</small>';
+      } else if (all.low === 0 && all.high === 0) {
+        priceEl.innerHTML = '&mdash;<small>Add a few details</small>';
       } else {
-        priceEl.innerHTML = window.FPCarpet.formatRange(result) +
-          '<small>Estimated price, ' + (PRICING.currency || 'CAD') + '</small>';
+        var label = startsAt(all) ? 'Starting at, ' : 'Estimated price, ';
+        priceEl.innerHTML = window.FPCarpet.formatRange(all) +
+          '<small>' + label + (PRICING.currency || 'CAD') + '</small>';
       }
     }
 
-    // breakdown
+    // itemised breakdown, grouped by section
     if (linesEl) {
-      var html = lines.map(function (l) {
-        var amt = l.amountMax !== undefined
-          ? '+' + window.FPCarpet.money(l.amount) + ' – ' +
-            window.FPCarpet.money(l.amountMax)
-          : window.FPCarpet.money(l.amount);
-        return '<li><span>' + l.label + '</span><b>' + amt + '</b></li>';
+      var html = [];
+      all.sections.forEach(function (sec) {
+        var r = sec.result;
+        html.push('<li class="est-break__head"><span>' + sec.title + '</span><b>' +
+          (r.custom ? CUSTOM : window.FPCarpet.formatRange(r)) + '</b></li>');
+        (r.lines || []).forEach(function (l) {
+          var amt;
+          if (l.included) amt = 'included';
+          else if (l.amountMax !== undefined) {
+            amt = '+' + window.FPCarpet.money(l.amount) + ' – ' +
+              window.FPCarpet.money(l.amountMax);
+          } else amt = window.FPCarpet.money(l.amount);
+          html.push('<li><span>' + l.label + '</span><b>' + amt + '</b></li>');
+        });
+        if (sec.key === 'carpet' && r.minimumApplied) {
+          html.push('<li><span>Minimum service charge applied</span><b>' +
+            window.FPCarpet.money(PRICING.minimum_service_charge) + '</b></li>');
+        }
       });
-      if (result && result.minimumApplied) {
-        html.push('<li><span>Minimum service charge applied</span><b>' +
-          window.FPCarpet.money(PRICING.minimum_service_charge) + '</b></li>');
-      }
-      // unpriced services are already listed in #quote-services — do not
-      // repeat them here
       linesEl.innerHTML = html.join('');
     }
 
-    // supporting note
-    if (noteEl) {
-      if (!s.services.length) {
-        noteEl.textContent = 'Tick the services you need — the questions change ' +
-          'to match, and you only see what is relevant to you.';
-      } else if (!pricedPicked.length) {
-        noteEl.textContent = 'Send these details through and we will come back ' +
-          'with a written price. Free, and with no obligation.';
-      } else if (result && result.minimumApplied) {
-        noteEl.textContent = 'Your selection comes to less than the ' +
-          window.FPCarpet.money(PRICING.minimum_service_charge) +
-          ' minimum service charge, so the minimum applies.';
-      } else if (unpricedPicked.length) {
-        noteEl.textContent = 'The estimate above covers the carpet and ' +
-          'upholstery work. The other services you picked are quoted separately ' +
-          'and we will include them in your written quote.';
-      } else if (result && result.hasFrom) {
-        noteEl.textContent = 'Sectionals start at the price shown — larger ' +
-          'sectionals are measured and quoted on site.';
+    // recurring: show first clean vs. the ongoing rate, never just the discount
+    if (recEl) {
+      var resSec = all.sections.filter(function (x) { return x.key === 'residential'; })[0];
+      var r = resSec && resSec.result;
+      if (r && !r.custom && r.discountPct > 0) {
+        recEl.innerHTML =
+          '<div class="recurring-box">' +
+          '<div><span>First clean</span><b>' + window.FPCarpet.money(r.firstTotal) + '</b></div>' +
+          '<div><span>' + r.recurringLabel + ', after that</span><b>' +
+          window.FPCarpet.money(r.afterTotal) + '</b></div>' +
+          '<p>' + r.discountPct + '% off the cleaning package from the second visit. ' +
+          'Add-ons are not discounted.</p></div>';
       } else {
-        noteEl.textContent = 'A minimum service charge of ' +
-          window.FPCarpet.money(PRICING.minimum_service_charge) +
-          ' applies to every carpet or upholstery appointment.';
+        recEl.innerHTML = '';
       }
     }
 
-    // the carpet disclaimer only makes sense when carpet/upholstery is picked
-    var footEl = $('.est-foot', root);
-    if (footEl) {
-      footEl.textContent = pricedPicked.length
-        ? PRICING.disclaimer
-        : 'Your written quote is free and carries no obligation. We confirm ' +
-          'the final price with you before any work is booked in.';
+    // note
+    if (noteEl) {
+      var notes = [];
+      if (s.services.filter(function (x) { return HOME_RANK[x]; }).length > 1) {
+        notes.push('You picked more than one house-cleaning package, so this is ' +
+          'priced as the most thorough one.');
+      }
+      all.reasons.forEach(function (x) { notes.push(x); });
+      var commSec = all.sections.filter(function (x) { return x.key === 'commercial'; })[0];
+      if (commSec && commSec.result.recurring) {
+        notes.push(PRICING.commercial.recurring_note);
+      }
+      if (!notes.length && all.anyPriced) {
+        notes.push('An estimate, not a final price — we confirm it in writing ' +
+          'before any work is booked in.');
+      }
+      noteEl.innerHTML = notes.join(' ');
     }
 
-    // hand everything to the quote form
+    if (footEl) footEl.textContent = PRICING.disclaimer;
+
+    writeDetail(s, all);
+  }
+
+  function startsAt(all) {
+    return all.sections.some(function (sec) {
+      return sec.result && (sec.result.startingAt || sec.result.hasFrom);
+    });
+  }
+
+  /* everything the customer chose, handed to the quote form */
+  function writeDetail(s, all) {
     var field = $('#quote-detail-field');
-    if (field) {
-      var parts = [];
-      if (s.services.length) parts.push('Services: ' + s.services.map(serviceLabel).join(', '));
-      if (!$('[data-panel="home"]', root).hidden) {
-        parts.push('Property: ' + s.beds + ' bed / ' + s.baths + ' bath' +
-          (s.sqft ? ' / ' + s.sqft + ' sq ft' : ''));
-        if (s.frequency) parts.push('Frequency: ' + s.frequency);
-        if (s.extras.length) parts.push('Add-ons: ' + s.extras.join(', '));
-      }
-      if (!$('[data-panel="commercial"]', root).hidden) {
-        if (s.commType) parts.push('Property type: ' + s.commType);
-        if (s.commSqft) parts.push('Approx. size: ' + s.commSqft + ' sq ft');
-        if (s.commFreq) parts.push('Frequency: ' + s.commFreq);
-      }
-      if (lines.length) {
-        parts.push('Items: ' + lines.map(function (l) { return l.label; }).join(', '));
-      }
-      if (result) parts.push('Estimate: ' + window.FPCarpet.formatRange(result));
-      field.value = parts.join(' | ');
+    if (!field) return;
+    var parts = [];
+    if (s.services.length) {
+      parts.push('Services: ' + s.services.map(serviceLabel).join(', '));
     }
+    if (s.homePick) {
+      parts.push('Home: ' + s.beds + ' bed / ' + s.baths + ' bath' +
+        (s.sqft ? ' / ' + s.sqft + ' sq ft' : ''));
+      var freqLab = checkedLabel('frequency');
+      if (freqLab) parts.push('Frequency: ' + freqLab);
+      var addonKeys = Object.keys(s.addons);
+      if (addonKeys.length) {
+        parts.push('Add-ons: ' + addonKeys.map(function (k) {
+          var a = PRICING.residential.addons.filter(function (x) { return x.key === k; })[0];
+          var n = s.addons[k];
+          return (n === true ? '' : n + ' x ') + (a ? a.label : k);
+        }).join(', '));
+      }
+    }
+    if (s.services.indexOf('commercial') !== -1) {
+      if (s.commType) parts.push('Property type: ' + s.commType);
+      if (s.commSqft) parts.push('Approx. size: ' + s.commSqft + ' sq ft');
+      if (s.commFreq) parts.push('Commercial frequency: ' + s.commFreq);
+      if (s.commWash) parts.push('Washrooms: ' + s.commWash);
+    }
+    if (all) {
+      all.sections.forEach(function (sec) {
+        var r = sec.result;
+        var items = (r.lines || []).map(function (l) { return l.label; }).join(', ');
+        if (items) parts.push(sec.title + ': ' + items);
+      });
+      if (all.anyCustom) parts.push('CUSTOM QUOTE NEEDED: ' + all.reasons.join(' '));
+      if (all.anyPriced) parts.push('Estimate: ' + window.FPCarpet.formatRange(all));
+    }
+    field.value = parts.join(' | ');
   }
 
   /* ------------------------------------------------------------ steppers */

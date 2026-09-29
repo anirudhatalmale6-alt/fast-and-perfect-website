@@ -981,6 +981,55 @@ ul.trust-row { list-style: none; margin: 0; padding-left: 0; padding-top: 1.6rem
 }
 #quote-services li b { font-weight: 600; color: var(--sage-deep); font-size: 0.85rem; }
 
+/* Section headings inside the estimate breakdown */
+.est-break__head {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(246, 242, 234, 0.18);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  font-weight: 800;
+}
+.est-break__head:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.est-break__head span { color: var(--sage-deep); }
+.est-break__head b { color: var(--marigold); letter-spacing: 0; text-transform: none; font-size: 1rem; }
+
+/* First clean vs. the ongoing recurring rate */
+.recurring-box {
+  margin-top: 1.1rem;
+  padding: 0.95rem 1.05rem;
+  border-radius: 12px;
+  background: rgba(246, 242, 234, 0.08);
+  border: 1px solid rgba(246, 242, 234, 0.16);
+}
+.recurring-box div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.92rem;
+  color: rgba(246, 242, 234, 0.82);
+}
+.recurring-box div + div { margin-top: 0.4rem; }
+.recurring-box b { color: var(--paper); font-weight: 700; }
+.recurring-box div:last-of-type b { color: var(--marigold); }
+.recurring-box p {
+  margin-top: 0.65rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: rgba(246, 242, 234, 0.6);
+}
+
+/* An add-on already covered by the chosen package */
+.treat.is-included {
+  opacity: 0.72;
+  border-style: dashed;
+}
+.treat.is-included .qty__price {
+  color: var(--pine);
+  font-weight: 700;
+}
+
 /* ---------- Admin price editor ---------- */
 .admin-block + .admin-block {
   margin-top: 2.25rem;

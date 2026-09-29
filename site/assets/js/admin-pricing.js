@@ -52,6 +52,41 @@
     var p = DATA;
     var html = '';
 
+    // ---- residential -------------------------------------------------
+    var resTiers = p.residential.tiers.map(function (t, i) {
+      return numField(t.label + ' — regular ($)', t.regular, 'residential.tiers.' + i + '.regular') +
+        numField(t.label + ' — deep ($)', t.deep, 'residential.tiers.' + i + '.deep') +
+        numField(t.label + ' — move in/out ($)', t.moveinout, 'residential.tiers.' + i + '.moveinout') +
+        numField(t.label + ' — max bathrooms', t.max_bathrooms, 'residential.tiers.' + i + '.max_bathrooms',
+          'Above this, the customer sees Custom Quote.');
+    }).join('');
+    html += section('Residential packages', resTiers,
+      'Three prices per home size. Anything outside these tiers shows as a ' +
+      'Custom Quote rather than guessing.');
+
+    var resAddons = p.residential.addons.map(function (a, i) {
+      return numField(a.label + ' ($)', a.price, 'residential.addons.' + i + '.price',
+        a.qty ? 'Charged per unit.' : (a.from ? 'Shown as \u201cfrom\u201d.' : ''));
+    }).join('');
+    html += section('Residential add-ons', resAddons);
+
+    var resRec = p.residential.recurring.map(function (r, i) {
+      if (!r.discount && r.key === 'onetime') return '';
+      return numField(r.label + ' — discount (%)', r.discount,
+        'residential.recurring.' + i + '.discount');
+    }).join('');
+    html += section('Recurring discounts', resRec,
+      'Applied to the cleaning package only, from the second visit onwards. ' +
+      'Never applied to add-ons, carpet, upholstery or commercial.');
+
+    // ---- commercial ----------------------------------------------------
+    var commBands = p.commercial.bands.map(function (b, i) {
+      return numField(b.label + ' ($)', b.price, 'commercial.bands.' + i + '.price');
+    }).join('');
+    html += section('Commercial — starting price per visit', commBands,
+      'Standard offices and retail only. Every other property type, and ' +
+      'anything over the top band, shows as a Custom Quote.');
+
     html += section('Minimum &amp; room size',
       numField('Minimum service charge ($)', p.minimum_service_charge,
         'minimum_service_charge', 'Applied to every appointment.') +
@@ -132,6 +167,21 @@
   }
 
   /* ------------------------------------------------------------ preview */
+  var RES_SAMPLES = [
+    { title: '3 bed / 2 bath — regular', state: { package: 'regular', bedrooms: 3, bathrooms: 2 } },
+    { title: '3 bed / 2 bath — deep', state: { package: 'deep', bedrooms: 3, bathrooms: 2 } },
+    { title: '3 bed / 2 bath — move out', state: { package: 'moveinout', bedrooms: 3, bathrooms: 2 } },
+    { title: '3 bed weekly (2nd visit on)', state: { package: 'regular', bedrooms: 3, bathrooms: 2, recurring: 'weekly' }, showAfter: true },
+    { title: '3 bed / 5 bath (over the cap)', state: { package: 'regular', bedrooms: 3, bathrooms: 5 } }
+  ];
+
+  var COMM_SAMPLES = [
+    { title: 'Office, 900 sq ft', state: { propertyType: 'Office', sqft: 900 } },
+    { title: 'Office, 2,000 sq ft', state: { propertyType: 'Office', sqft: 2000 } },
+    { title: 'Office, 4,000 sq ft', state: { propertyType: 'Office', sqft: 4000 } },
+    { title: 'Clinic, 2,000 sq ft', state: { propertyType: 'Medical or dental clinic', sqft: 2000 } }
+  ];
+
   var SAMPLES = [
     { title: 'Nothing selected', state: {} },
     { title: '1 carpeted room only', state: { rooms: 1 } },
@@ -145,16 +195,38 @@
 
   function preview() {
     if (!window.FPCarpet) return;
-    var rows = SAMPLES.map(function (s) {
+    var CUSTOM = DATA.custom_quote_label || 'Custom Quote';
+    var rows = [];
+
+    rows.push('<tr><td colspan="2"><b>Residential</b></td></tr>');
+    RES_SAMPLES.forEach(function (s) {
+      var r = window.FPCarpet.residential(s.state, DATA);
+      var val = r.custom ? CUSTOM
+        : (s.showAfter
+          ? window.FPCarpet.money(r.firstTotal) + ' then ' + window.FPCarpet.money(r.afterTotal)
+          : window.FPCarpet.money(r.low));
+      rows.push('<tr><td>' + s.title + '</td><td>' + val + '</td></tr>');
+    });
+
+    rows.push('<tr><td colspan="2"><b>Commercial</b></td></tr>');
+    COMM_SAMPLES.forEach(function (s) {
+      var r = window.FPCarpet.commercial(s.state, DATA);
+      rows.push('<tr><td>' + s.title + '</td><td>' +
+        (r.custom ? CUSTOM : 'from ' + window.FPCarpet.money(r.low)) + '</td></tr>');
+    });
+
+    rows.push('<tr><td colspan="2"><b>Carpet &amp; upholstery</b></td></tr>');
+    SAMPLES.forEach(function (s) {
       var state = Object.assign(
         { rooms: 0, hallways: 0, steps: 0, items: {}, treatments: [] }, s.state);
       var r = window.FPCarpet.estimate(state, DATA);
-      return '<tr><td>' + s.title + '</td><td>' +
+      rows.push('<tr><td>' + s.title + '</td><td>' +
         window.FPCarpet.formatRange(r) +
         (r.minimumApplied ? ' <span class="field-hint">(minimum)</span>' : '') +
-        '</td></tr>';
-    }).join('');
-    $('#preview-body', root).innerHTML = rows;
+        '</td></tr>');
+    });
+
+    $('#preview-body', root).innerHTML = rows.join('');
   }
 
   /* ------------------------------------------------------------ actions */
