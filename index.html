@@ -173,74 +173,242 @@
   </div>
 </section>
 
-<section class="section" id="estimate">
+
+<section class="section" id="calculator">
   <div class="shell">
     <div class="section-head section-head--center">
       <span class="eyebrow eyebrow--center">Free quote</span>
-      <h2 class="h-lg">Tell us what you <span class="tilt">need</span>.</h2>
-      <p class="lede">Set the details below and send them through. We'll come back with a
-      written price — no walkthrough needed for most homes, and no obligation.</p>
+      <h2 class="h-lg">One calculator, <span class="tilt">every</span> service.</h2>
+      <p class="lede">Tick what you need — house cleaning, commercial, carpet, upholstery, or several at once. The questions change to match, so you only answer what is relevant to you.</p>
     </div>
     
-<div class="estimator">
-  <form class="est-panel" id="estimator-form" data-prices="off" novalidate>
+<div class="estimator" id="quote-calculator" data-prices-general="off">
+  <script type="application/json" id="fp-pricing-inline">{"_README": ["SINGLE SOURCE OF TRUTH FOR ALL CARPET & UPHOLSTERY PRICING.", "", "Edit the numbers in this file and re-upload it — the calculator and the", "published rate table both update immediately. Nothing else needs changing.", "", "Easiest way to edit: open /admin-pricing.html on the site, change the", "prices in the form, then click 'Download pricing.json' and upload the new", "file over this one.", "", "All prices are in CAD and are ESTIMATES, not guaranteed final prices."], "currency": "CAD", "minimum_service_charge": 139, "max_room_sqft": 250, "max_room_note": "A room counts as up to 250 sq ft (roughly 15 ft x 16 ft). Rooms larger than this, basements and open-plan areas are measured and quoted separately.", "carpet": {"room_tiers": [59, 99, 139, 169, 199], "additional_room": 35, "hallway": 25, "stairs_base": 55, "stairs_included_steps": 13, "additional_step": 4}, "items": [{"key": "chair", "group": "Upholstery", "label": "Fabric chair", "price": 39}, {"key": "recliner", "group": "Upholstery", "label": "Recliner / armchair", "price": 69}, {"key": "loveseat", "group": "Upholstery", "label": "Loveseat (2-seat)", "price": 89}, {"key": "sofa", "group": "Upholstery", "label": "Sofa (3-seat)", "price": 119}, {"key": "sectional", "group": "Upholstery", "label": "Sectional sofa", "price": 159, "from": true}, {"key": "ottoman", "group": "Upholstery", "label": "Ottoman", "price": 35}, {"key": "twin", "group": "Mattresses", "label": "Twin mattress", "price": 69}, {"key": "queen", "group": "Mattresses", "label": "Queen mattress", "price": 99}, {"key": "king", "group": "Mattresses", "label": "King mattress", "price": 119}], "treatments": [{"key": "heavy_stain", "label": "Heavy stain treatment", "min": 20, "max": 40}, {"key": "pet_odour", "label": "Pet odour treatment", "min": 30, "max": 60}], "disclaimer": "Estimated price only. Final pricing may vary depending on the size and condition of the carpet or upholstery, the level of staining, pet issues and the amount of cleaning required. A minimum service charge of $139 applies to every appointment."}</script>
+  <form class="est-panel" novalidate>
     <div class="field field--full">
-      <span class="field-label">What do you need cleaned?</span>
-      <div class="choice"><input type="radio" name="service" id="svc-residential" value="residential" checked><label for="svc-residential">Regular house clean</label><input type="radio" name="service" id="svc-deep" value="deep"><label for="svc-deep">Deep clean</label><input type="radio" name="service" id="svc-moveinout" value="moveinout"><label for="svc-moveinout">Move in / move out</label><input type="radio" name="service" id="svc-carpet" value="carpet"><label for="svc-carpet">Carpet cleaning</label><input type="radio" name="service" id="svc-commercial" value="commercial"><label for="svc-commercial">Commercial / office</label></div>
-    <div class="form-note mt-2" id="carpet-redirect" hidden><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z"/></svg>
-      <span>Carpets and upholstery have their own calculator, priced by room,
-      staircase and furniture item — with live estimates.
-      <a href="carpet-cleaning.html#calculator"><b>Open the carpet &amp;
-      upholstery calculator</b></a>.</span></div>
+      <span class="field-label">What do you need cleaned?
+        <span class="field-hint" style="text-transform:none;letter-spacing:0">
+          — choose as many as you need</span></span>
+      <div class="choice choice--multi"><input type="checkbox" name="service" id="svc-residential" value="residential" checked><label for="svc-residential">Regular house cleaning</label><input type="checkbox" name="service" id="svc-deep" value="deep"><label for="svc-deep">Deep cleaning</label><input type="checkbox" name="service" id="svc-moveinout" value="moveinout"><label for="svc-moveinout">Move in / move out</label><input type="checkbox" name="service" id="svc-commercial" value="commercial"><label for="svc-commercial">Commercial / office</label><input type="checkbox" name="service" id="svc-carpet" value="carpet"><label for="svc-carpet">Carpet cleaning</label><input type="checkbox" name="service" id="svc-upholstery" value="upholstery"><label for="svc-upholstery">Upholstery cleaning</label></div>
     </div>
-    <div class="field-grid mt-2">
-      <div class="field">
-        <span class="field-label">Bedrooms</span>
-        <div class="stepper" data-stepper data-min="0" data-max="10">
-          <button type="button" data-step="down" aria-label="Fewer bedrooms">&minus;</button>
-          <output>3</output>
-          <input type="hidden" name="bedrooms" value="3">
-          <button type="button" data-step="up" aria-label="More bedrooms">+</button>
-        </div>
-      </div>
-      <div class="field">
-        <span class="field-label">Bathrooms</span>
-        <div class="stepper" data-stepper data-min="0" data-max="10">
-          <button type="button" data-step="down" aria-label="Fewer bathrooms">&minus;</button>
-          <output>2</output>
-          <input type="hidden" name="bathrooms" value="2">
-          <button type="button" data-step="up" aria-label="More bathrooms">+</button>
-        </div>
-      </div>
-      <div class="field field--full">
-        <label for="sqft-estimator-form">Approximate size (sq ft) <span class="field-hint">— optional</span></label>
-        <input type="number" id="sqft-estimator-form" name="sqft" min="0" max="20000" step="50" placeholder="e.g. 1600" inputmode="numeric">
+    
+<div data-panel="home" hidden>
+  <span class="eyebrow mt-3">Your home</span>
+  <div class="field-grid mt-1">
+    <div class="field">
+      <span class="field-label">Bedrooms</span>
+      <div class="stepper" data-qty="__beds" data-min="0" data-max="10">
+        <button type="button" data-step="down" aria-label="Fewer bedrooms">&minus;</button>
+        <output>3</output><input type="hidden" value="3">
+        <button type="button" data-step="up" aria-label="More bedrooms">+</button>
       </div>
     </div>
-    <div class="field field--full mt-2">
-      <span class="field-label">How often?</span>
-      <div class="choice"><input type="radio" name="frequency" id="frq-onetime" value="onetime" checked><label for="frq-onetime">One-time</label><input type="radio" name="frequency" id="frq-monthly" value="monthly"><label for="frq-monthly">Monthly</label><input type="radio" name="frequency" id="frq-biweekly" value="biweekly"><label for="frq-biweekly">Every 2 weeks</label><input type="radio" name="frequency" id="frq-weekly" value="weekly"><label for="frq-weekly">Weekly</label></div>
+    <div class="field">
+      <span class="field-label">Bathrooms</span>
+      <div class="stepper" data-qty="__baths" data-min="0" data-max="10">
+        <button type="button" data-step="down" aria-label="Fewer bathrooms">&minus;</button>
+        <output>2</output><input type="hidden" value="2">
+        <button type="button" data-step="up" aria-label="More bathrooms">+</button>
+      </div>
     </div>
-    <div class="field field--full mt-2">
-      <span class="field-label">Add-ons</span>
-      <div class="choice"><input type="checkbox" name="extras" id="ex-fridge" value="fridge"><label for="ex-fridge">Inside fridge</label><input type="checkbox" name="extras" id="ex-oven" value="oven"><label for="ex-oven">Inside oven</label><input type="checkbox" name="extras" id="ex-windows" value="windows"><label for="ex-windows">Interior windows</label><input type="checkbox" name="extras" id="ex-laundry" value="laundry"><label for="ex-laundry">Laundry</label><input type="checkbox" name="extras" id="ex-garage" value="garage"><label for="ex-garage">Garage</label><input type="checkbox" name="extras" id="ex-basement" value="basement"><label for="ex-basement">Finished basement</label></div>
+    <div class="field field--full">
+      <label for="q-sqft">Approximate size (sq ft) <span class="field-hint">— optional</span></label>
+      <input type="number" id="q-sqft" name="sqft" min="0" max="20000" step="50"
+             placeholder="e.g. 1600" inputmode="numeric">
     </div>
+  </div>
+  <span class="eyebrow mt-3">How often</span>
+  <div class="choice mt-1"><input type="radio" name="frequency" id="frq-onetime" value="onetime" checked><label for="frq-onetime">One-time</label><input type="radio" name="frequency" id="frq-monthly" value="monthly"><label for="frq-monthly">Monthly</label><input type="radio" name="frequency" id="frq-biweekly" value="biweekly"><label for="frq-biweekly">Every 2 weeks</label><input type="radio" name="frequency" id="frq-weekly" value="weekly"><label for="frq-weekly">Weekly</label></div>
+  <span class="eyebrow mt-3">Add-ons</span>
+  <div class="choice mt-1"><input type="checkbox" name="extras" id="ex-fridge" value="fridge"><label for="ex-fridge">Inside fridge</label><input type="checkbox" name="extras" id="ex-oven" value="oven"><label for="ex-oven">Inside oven</label><input type="checkbox" name="extras" id="ex-windows" value="windows"><label for="ex-windows">Interior windows</label><input type="checkbox" name="extras" id="ex-laundry" value="laundry"><label for="ex-laundry">Laundry</label><input type="checkbox" name="extras" id="ex-garage" value="garage"><label for="ex-garage">Garage</label><input type="checkbox" name="extras" id="ex-basement" value="basement"><label for="ex-basement">Finished basement</label></div>
+</div>
+<div data-panel="commercial" hidden>
+  <span class="eyebrow mt-3">Your premises</span>
+  <div class="field-grid mt-1">
+    <div class="field">
+      <label for="q-comm-type">Type of property</label>
+      <select id="q-comm-type" name="comm_type"><option>Office</option><option>Medical or dental clinic</option><option>Retail store</option><option>Salon or spa</option><option>Restaurant or café</option><option>Warehouse or shop</option><option>Gym or studio</option><option>Common areas / property management</option><option>Other</option></select>
+    </div>
+    <div class="field">
+      <label for="q-comm-sqft">Approximate size (sq ft)</label>
+      <input type="number" id="q-comm-sqft" name="comm_sqft" min="0" max="500000"
+             step="100" placeholder="e.g. 4000" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label for="q-comm-freq">Cleaning frequency</label>
+      <select id="q-comm-freq" name="comm_frequency"><option>One-time</option><option>Nightly</option><option>2–3 times a week</option><option>Weekly</option><option>Every 2 weeks</option><option>Monthly</option></select>
+    </div>
+    <div class="field">
+      <label for="q-comm-rooms">Washrooms on site</label>
+      <input type="number" id="q-comm-rooms" name="comm_washrooms" min="0" max="100"
+             placeholder="e.g. 2" inputmode="numeric">
+    </div>
+    <div class="field field--full">
+      <label for="q-comm-notes">Anything else we should know?</label>
+      <textarea id="q-comm-notes" name="comm_notes"
+        placeholder="Access hours, alarm, loading bay, areas to avoid…"></textarea>
+    </div>
+  </div>
+  <div class="form-note mt-2"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    <span>Commercial work is priced after a short site walkthrough, so we quote
+    the actual job rather than guessing from a form.</span></div>
+</div>
+<div data-panel="carpet" hidden>
+  <span class="eyebrow mt-3">Carpet cleaning</span>
+  <div class="qty-group">
+<div class="qty" data-qty="__rooms" data-min="0" data-max="20">
+  <span class="qty__label">Carpeted rooms
+    <span class="qty__price" data-price-for="__rooms"></span></span>
+  <span class="stepper stepper--sm">
+    <button type="button" data-step="down" aria-label="Fewer carpeted rooms">&minus;</button>
+    <output>0</output><input type="hidden" value="0">
+    <button type="button" data-step="up" aria-label="More carpeted rooms">+</button>
+  </span>
+</div>
+<div class="qty" data-qty="__hallways" data-min="0" data-max="10">
+  <span class="qty__label">Hallways
+    <span class="qty__price" data-price-for="__hallways"></span></span>
+  <span class="stepper stepper--sm">
+    <button type="button" data-step="down" aria-label="Fewer: Hallways">&minus;</button>
+    <output>0</output>
+    <input type="hidden" value="0">
+    <button type="button" data-step="up" aria-label="More: Hallways">+</button>
+  </span>
+</div>
+<div class="qty" data-qty="__steps" data-min="0" data-max="60">
+  <span class="qty__label">Stairs — number of steps
+    <span class="qty__price" data-price-for="__steps"></span></span>
+  <span class="stepper stepper--sm">
+    <button type="button" data-step="down" aria-label="Fewer: Stairs — number of steps">&minus;</button>
+    <output>0</output>
+    <input type="hidden" value="0">
+    <button type="button" data-step="up" aria-label="More: Stairs — number of steps">+</button>
+  </span>
+</div></div>
+  <div class="form-note mt-2"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    <span data-pricing-note="max_room">A room counts as up to 250 sq ft (roughly 15 ft x 16 ft). Rooms larger than this, basements and open-plan areas are measured and quoted separately.</span></div>
+</div>
+<div data-panel="upholstery" hidden>
+  <span class="eyebrow mt-3">Upholstery</span>
+  <div class="qty-group">
+    
+<div class="qty" data-qty="chair" data-min="0" data-max="15">
+  <span class="qty__label">Fabric chair
+    <span class="qty__price" data-price-for="chair"></span></span>
+  <span class="stepper stepper--sm">
+    <button type="button" data-step="down" aria-label="Fewer: Fabric chair">&minus;</button>
+    <output>0</output>
+    <input type="hidden" value="0">
+    <button type="button" data-step="up" aria-label="More: Fabric chair">+</button>
+  </span>
+</div>
+<div class="qty" data-qty="recliner" data-min="0" data-max="15">
+  <span class="qty__label">Recliner / armchair
+    <span class="qty__price" data-price-for="recliner"></span></span>
+  <span class="stepper stepper--sm">
+    <button type="button" data-step="down" aria-label="Fewer: Recliner / armchair">&minus;</button>
+    <output>0</output>
+    <input type="hidden" value="0">
+    <button type="button" data-step="up" aria-label="More: Recliner / armchair">+</button>
+  </span>
+</div>
+<div class="qty" data-qty="loveseat" data-min="0" data-max="15">
+  <span class="qty__label">Loveseat (2-seat)
+    <span class="qty__price" data-price-for="loveseat"></span></span>
+  <span class="stepper stepper--sm">
+    <button type="button" data-step="down" aria-label="Fewer: Loveseat (2-seat)">&minus;</button>
+    <output>0</output>
+    <input type="hidden" value="0">
+    <button type="button" data-step="up" aria-label="More: Loveseat (2-seat)">+</button>
+  </span>
+</div>
+<div class="qty" data-qty="sofa" data-min="0" data-max="15">
+  <span class="qty__label">Sofa (3-seat)
+    <span class="qty__price" data-price-for="sofa"></span></span>
+  <span class="stepper stepper--sm">
+    <button type="button" data-step="down" aria-label="Fewer: Sofa (3-seat)">&minus;</button>
+    <output>0</output>
+    <input type="hidden" value="0">
+    <button type="button" data-step="up" aria-label="More: Sofa (3-seat)">+</button>
+  </span>
+</div>
+<div class="qty" data-qty="sectional" data-min="0" data-max="15">
+  <span class="qty__label">Sectional sofa
+    <span class="qty__price" data-price-for="sectional"></span></span>
+  <span class="stepper stepper--sm">
+    <button type="button" data-step="down" aria-label="Fewer: Sectional sofa">&minus;</button>
+    <output>0</output>
+    <input type="hidden" value="0">
+    <button type="button" data-step="up" aria-label="More: Sectional sofa">+</button>
+  </span>
+</div>
+<div class="qty" data-qty="ottoman" data-min="0" data-max="15">
+  <span class="qty__label">Ottoman
+    <span class="qty__price" data-price-for="ottoman"></span></span>
+  <span class="stepper stepper--sm">
+    <button type="button" data-step="down" aria-label="Fewer: Ottoman">&minus;</button>
+    <output>0</output>
+    <input type="hidden" value="0">
+    <button type="button" data-step="up" aria-label="More: Ottoman">+</button>
+  </span>
+</div>
+  </div>
+  <span class="eyebrow mt-3">Mattresses</span>
+  <div class="qty-group">
+    
+<div class="qty" data-qty="twin" data-min="0" data-max="15">
+  <span class="qty__label">Twin mattress
+    <span class="qty__price" data-price-for="twin"></span></span>
+  <span class="stepper stepper--sm">
+    <button type="button" data-step="down" aria-label="Fewer: Twin mattress">&minus;</button>
+    <output>0</output>
+    <input type="hidden" value="0">
+    <button type="button" data-step="up" aria-label="More: Twin mattress">+</button>
+  </span>
+</div>
+<div class="qty" data-qty="queen" data-min="0" data-max="15">
+  <span class="qty__label">Queen mattress
+    <span class="qty__price" data-price-for="queen"></span></span>
+  <span class="stepper stepper--sm">
+    <button type="button" data-step="down" aria-label="Fewer: Queen mattress">&minus;</button>
+    <output>0</output>
+    <input type="hidden" value="0">
+    <button type="button" data-step="up" aria-label="More: Queen mattress">+</button>
+  </span>
+</div>
+<div class="qty" data-qty="king" data-min="0" data-max="15">
+  <span class="qty__label">King mattress
+    <span class="qty__price" data-price-for="king"></span></span>
+  <span class="stepper stepper--sm">
+    <button type="button" data-step="down" aria-label="Fewer: King mattress">&minus;</button>
+    <output>0</output>
+    <input type="hidden" value="0">
+    <button type="button" data-step="up" aria-label="More: King mattress">+</button>
+  </span>
+</div>
+  </div>
+</div>
+<div data-panel="treatments" hidden>
+  <span class="eyebrow mt-3">Additional treatments</span>
+  <div class="treat-group"><label class="treat"><input type="checkbox" name="treatment" value="heavy_stain"><span>Heavy stain treatment<span class="qty__price" data-price-for="heavy_stain"></span></span></label><label class="treat"><input type="checkbox" name="treatment" value="pet_odour"><span>Pet odour treatment<span class="qty__price" data-price-for="pet_odour"></span></span></label></div>
+</div>
   </form>
 
   <aside class="est-result">
-    <span class="est-result__label">Your quote</span>
-    <div class="est-price" id="est-price-static">Priced<small>per job</small></div>
-    <p class="est-sub">Every space is different, so we price yours properly rather
-    than guessing. Send these details through and we'll come back with a written
-    quote.</p>
-    <ul class="est-break" id="est-breakdown"></ul>
-    <button class="btn btn--gold btn--block" type="button" id="est-continue">Send me this quote <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
-    <p class="est-foot">No obligation, and no charge for the quote.</p>
+    <span class="est-result__label">Your estimate</span>
+    <div class="est-price" id="quote-price">&mdash;<small>Choose a service to start</small></div>
+    <p class="est-sub" id="quote-note"></p>
+    <ul class="est-break" id="quote-services"></ul>
+    <ul class="est-break" id="quote-lines"></ul>
+    <a class="btn btn--gold btn--block" href="quote.html#quote-form" id="quote-cta">
+      Send me this quote <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
+    <p class="est-foot" data-pricing-note="disclaimer">Estimated price only. Final pricing may vary depending on the size and condition of the carpet or upholstery, the level of staining, pet issues and the amount of cleaning required. A minimum service charge of $139 applies to every appointment.</p>
   </aside>
 </div>
 
   </div>
 </section>
+
 
 <section class="section bg-paper">
   <div class="shell">
@@ -419,6 +587,8 @@
   <a href="quote.html"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z"/></svg> Free Quote</a>
 </div>
 
+<script src="assets/js/pricing-engine.js" defer></script>
+<script src="assets/js/quote-calculator.js" defer></script>
 <script src="assets/js/main.js" defer></script>
 </body>
 </html>

@@ -113,10 +113,8 @@
       <label for="q-msg">Anything we should know?</label>
       <textarea id="q-msg" name="message" placeholder="3 bed / 2 bath bungalow, two cats, need the oven done too…"></textarea>
     </div>
+    <input type="hidden" name="quote_details" id="quote-detail-field" value="">
     <input type="hidden" name="estimate" id="quote-estimate" value="">
-    <input type="hidden" name="frequency" value="">
-    <input type="hidden" name="property" value="">
-    <input type="hidden" name="extras" value="">
     <input type="hidden" name="_subject" value="New quote request — fastandperfect.ca">
     <div class="hp" aria-hidden="true">
       <label for="q-gotcha">Leave this blank</label>
@@ -247,6 +245,8 @@
   <a href="quote.html"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z"/></svg> Free Quote</a>
 </div>
 
+<script src="assets/js/pricing-engine.js" defer></script>
+<script src="assets/js/quote-calculator.js" defer></script>
 <script src="assets/js/main.js" defer></script>
 </body>
 </html>
