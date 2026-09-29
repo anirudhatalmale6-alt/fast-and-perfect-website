@@ -19,14 +19,42 @@ These are stand-in values. Everything else is production-ready.
 | Domain | `https://fastandperfect.ca` | `tools/build.py` → `BUSINESS` |
 | Social links | `#` | `tools/build.py` → `BUSINESS["social"]` |
 | Hours | Mon–Fri 8–7, Sat 9–5 | `tools/build.py` → `BUSINESS["hours"]` |
-| Service areas | 12 communities | `tools/build.py` → `BUSINESS["areas"]` |
+| Service areas | Edmonton + 19 secondary | `tools/build.py` → `BUSINESS["primary_area"]` / `secondary_areas` |
 | Photos | Generated illustrations | `site/assets/img/` |
-| Reviews | Written examples | `tools/build.py` → `TESTIMONIALS` |
-| Prices | Edmonton market estimates | `tools/build.py` + `site/assets/js/main.js` → `RATES` |
+| Reviews | **Removed** — none published | `tools/build.py` → `TESTIMONIALS` |
+| Prices | **Removed** — none published | `tools/build.py` → `CLAIMS["show_prices"]` |
+| Insurance / bonding / guarantees | **Removed** — none published | `tools/build.py` → `CLAIMS` |
 | Form delivery | Demo mode | `site/assets/js/main.js` → `CONFIG.FORM_ENDPOINT` |
 
-The review quotes are illustrative examples written to show the layout — they
-must be replaced with real customer reviews before the site goes live.
+### The claims gate
+
+`tools/build.py` has a `CLAIMS` dict. Everything in it is currently `False`
+or `None`, and while a value is off, the site publishes nothing about it —
+no star ratings, no review quotes, no insurance or bonding statements, no
+guarantees, no staff-screening claims, and no prices (including the prices
+that would otherwise appear in the Google structured data).
+
+```python
+CLAIMS = {
+    "insured": False,
+    "bonded": False,
+    "wcb_covered": False,
+    "police_checks": False,
+    "guarantee_hours": None,
+    "rating": None,
+    "review_count": None,
+    "eco_products": False,
+    "same_crew": False,
+    "supplies_included": False,
+    "years_in_business": None,
+    "show_prices": False,
+}
+```
+
+Set a value to the real, confirmed figure and rebuild to switch that claim
+back on. **Do not enable anything the owner has not confirmed in writing.**
+Invented reviews and unverifiable business claims breach Google and Meta
+advertising policy and are grounds for a listing suspension.
 
 ---
 
@@ -34,15 +62,15 @@ must be replaced with real customer reviews before the site goes live.
 
 | File | Purpose |
 |---|---|
-| `index.html` | Home — hero, services, instant estimator, before/after, reviews, FAQ |
-| `residential-cleaning.html` | Residential service + room-by-room checklist + price table |
+| `index.html` | Home — hero, services, quote form, before/after, FAQ |
+| `residential-cleaning.html` | Residential service + room-by-room checklist |
 | `commercial-cleaning.html` | Commercial service + sectors + onboarding |
-| `carpet-cleaning.html` | Carpet & upholstery + method + published rates |
-| `quote.html` | Instant estimator + free quote form |
+| `carpet-cleaning.html` | Carpet & upholstery + method |
+| `quote.html` | Quote builder + free quote form |
 | `book.html` | Online booking — service, date, arrival window, live summary |
 | `gallery.html` | Before/after sliders + job grid |
-| `service-areas.html` | 12 communities + Edmonton neighbourhoods (local SEO) |
-| `about.html` | Company story, promises, hiring standards |
+| `service-areas.html` | Edmonton (primary) + 19 secondary communities (local SEO) |
+| `about.html` | Who we are, how we work, what to expect |
 | `contact.html` | Contact form, phone, hours |
 | `privacy.html` | PIPEDA / Alberta PIPA privacy policy |
 | `404.html` | Not-found page |
@@ -53,9 +81,10 @@ Plus `sitemap.xml` and `robots.txt`.
 
 ## Features
 
-- **Instant quote estimator** — service, bedrooms, bathrooms, square footage,
-  frequency and add-ons produce a live price range with a visible breakdown.
-  Recurring discounts (10/15/20%) are applied automatically.
+- **Quote builder** — service, bedrooms, bathrooms, square footage, frequency
+  and add-ons, summarised live and carried into the quote form. The pricing
+  engine is written and tested but stays switched off until `CLAIMS`
+  `show_prices` is enabled with the owner's confirmed rates.
 - **Online booking** with date, arrival window and a live-updating summary card.
 - **Before/after sliders** — drag, touch or arrow-key driven.
 - **Click-to-call** everywhere, plus a sticky call bar on mobile.
@@ -77,7 +106,8 @@ The files in `site/` are plain HTML. Open one, change the text, save, upload.
 Nothing else required.
 
 ### Option B — rebuild from the generator (recommended for global changes)
-Changing the phone number in one place and having all 12 pages update:
+Changing the phone number in one place and having all 12 pages update
+(the same applies to service areas, hours and every gated claim):
 
 ```bash
 python3 tools/build.py            # regenerates every page in site/

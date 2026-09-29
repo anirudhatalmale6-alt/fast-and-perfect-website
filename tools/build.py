@@ -46,10 +46,15 @@ BUSINESS = {
         (["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "08:00", "19:00"),
         (["Saturday"], "09:00", "17:00"),
     ],
-    "areas": [
-        "Edmonton", "St. Albert", "Sherwood Park", "Spruce Grove", "Leduc",
-        "Beaumont", "Stony Plain", "Fort Saskatchewan", "Devon", "Nisku",
-        "Morinville", "Ardrossan",
+    # Edmonton is the primary market — it leads every page, carries the
+    # keyword weight, and is the geographic target for Google Ads and SEO.
+    # The rest are secondary service areas.
+    "primary_area": "Edmonton",
+    "secondary_areas": [
+        "St. Albert", "Sherwood Park", "Spruce Grove", "Stony Plain", "Leduc",
+        "Beaumont", "Fort Saskatchewan", "Nisku", "Devon", "Acheson",
+        "Morinville", "Ardrossan", "Gibbons", "Legal", "Bon Accord", "Calmar",
+        "Thorsby", "Millet", "New Sarepta",
     ],
     "neighbourhoods": [
         "Downtown", "Oliver", "Windermere", "Terwillegar", "Summerside",
@@ -64,9 +69,56 @@ BUSINESS = {
     },
 }
 
+BUSINESS["areas"] = [BUSINESS["primary_area"]] + BUSINESS["secondary_areas"]
+
+# ============================================================================
+#  UNVERIFIED CLAIMS GATE
+#
+#  The owner has not yet confirmed any of the following, so NONE of it appears
+#  on the site. Every block below is suppressed at build time while the value
+#  is False/None — no ratings, no review quotes, no insurance or bonding
+#  claims, no guarantees, no staff-screening claims, no pricing.
+#
+#  To switch one back on: set it to the real, confirmed value and rebuild.
+#  Do not enable anything the owner has not explicitly confirmed in writing.
+# ============================================================================
+CLAIMS = {
+    "insured": False,          # set True only once a policy is confirmed
+    "bonded": False,
+    "wcb_covered": False,
+    "police_checks": False,    # staff criminal-record checks
+    "guarantee_hours": None,   # e.g. 24 — the re-clean guarantee window
+    "rating": None,            # e.g. "4.9" — only from a real review profile
+    "review_count": None,      # e.g. 87
+    "eco_products": False,     # pet/child-safe product claim
+    "same_crew": False,        # "same cleaners every visit"
+    "supplies_included": False,
+    "years_in_business": None,
+    "show_prices": False,      # rate tables + estimator dollar figures
+}
+
+# Real customer reviews only. Leave empty until the owner supplies them —
+# invented reviews breach Google and Meta policy and are grounds for a
+# listing suspension.
+TESTIMONIALS = []
+
 B = BUSINESS
 TEL = B["phone_href"]
 PHONE = B["phone_display"]
+
+
+def claim(key):
+    """True when the owner has confirmed this claim and it may be published."""
+    return bool(CLAIMS.get(key))
+
+
+# Recurring-discount percentages are a pricing claim, so they only appear
+# on the frequency chips once pricing is confirmed.
+DISCOUNT_TAG = (
+    ['<span class="tag">-10%</span>', '<span class="tag">-15%</span>',
+     '<span class="tag">-20%</span>']
+    if CLAIMS.get("show_prices") else ["", "", ""]
+)
 
 
 # ---------------------------------------------------------------- icons
@@ -196,9 +248,9 @@ def footer():
     <div class="footer-grid">
       <div>
         {BRAND}
-        <p class="footer-about">Locally owned cleaning company serving {B['city']} and
-        surrounding communities. Insured, bonded and backed by a 24-hour
-        satisfaction guarantee.</p>
+        <p class="footer-about">Locally owned cleaning company serving {B['city']} as our
+        primary service area, plus {len(B['secondary_areas'])} surrounding communities
+        across the Edmonton region. Residential, commercial and carpet cleaning.</p>
         <div class="socials">
           <a href="{soc['facebook']}" aria-label="Facebook">{icon('facebook', 18)}</a>
           <a href="{soc['instagram']}" aria-label="Instagram">{icon('instagram', 18)}</a>
@@ -266,9 +318,12 @@ def local_business_schema():
         "email": B["email"],
         "image": B["domain"] + "/assets/img/og-cover.svg",
         "logo": B["domain"] + "/assets/img/logo-mark.svg",
-        "priceRange": "$$",
-        "currenciesAccepted": "CAD",
-        "paymentAccepted": "Cash, Debit, Credit Card, e-Transfer",
+        # priceRange and paymentAccepted are business claims — Google reads and
+        # displays them, so they stay out until the owner confirms both.
+        **({"priceRange": "$$",
+            "currenciesAccepted": "CAD",
+            "paymentAccepted": "Cash, Debit, Credit Card, e-Transfer"}
+           if claim("show_prices") else {}),
         "address": {
             "@type": "PostalAddress",
             "addressLocality": B["city"],
@@ -332,21 +387,25 @@ def faq_schema(pairs):
 
 
 def service_schema(name, desc, low, high, unit="visit"):
-    return {
+    schema = {
         "@context": "https://schema.org",
         "@type": "Service",
         "serviceType": name,
         "provider": {"@id": B["domain"] + "/#business"},
         "areaServed": [{"@type": "City", "name": a} for a in B["areas"]],
         "description": desc,
-        "offers": {
+    }
+    # A price in structured data is still a published price — Google surfaces
+    # it in search results. Gated with the rest.
+    if claim("show_prices"):
+        schema["offers"] = {
             "@type": "AggregateOffer",
             "priceCurrency": "CAD",
             "lowPrice": str(low),
             "highPrice": str(high),
             "offerCount": "5",
-        },
-    }
+        }
+    return schema
 
 
 # ---------------------------------------------------------------- shell
@@ -425,11 +484,51 @@ def page_head(eyebrow, h1, lede, crumbs_items):
 """
 
 
+def hero_float_cards():
+    """The rating card only exists if there is a real rating; the price card
+    only exists if prices are confirmed. Otherwise both are replaced with
+    statements of fact about the service itself."""
+    cards = []
+    if CLAIMS.get("rating"):
+        sub = (f"from {CLAIMS['review_count']} reviews"
+               if CLAIMS.get("review_count") else "from local reviews")
+        cards.append(f"""
+      <div class="float-card float-card--rating">
+        <span class="stars" aria-hidden="true">{''.join(icon('star', 14) for _ in range(5))}</span>
+        <span><span class="rating-num">{CLAIMS['rating']}</span>
+        <span class="rating-sub">{sub}</span></span>
+      </div>""")
+    else:
+        cards.append(f"""
+      <div class="float-card float-card--rating">
+        <span class="stars" aria-hidden="true" style="color:var(--pine)">{icon('sparkle', 20)}</span>
+        <span><span class="rating-num">3</span>
+        <span class="rating-sub">services, one local team</span></span>
+      </div>""")
+
+    if claim("show_prices"):
+        cards.append("""
+      <div class="float-card float-card--quote">
+        <span class="fc-label">3 bed / 2 bath</span>
+        <div class="fc-price">$165</div>
+        <p class="fc-note">Typical recurring clean in Edmonton — quoted in writing.</p>
+      </div>""")
+    else:
+        cards.append(f"""
+      <div class="float-card float-card--quote">
+        <span class="fc-label">Free quote</span>
+        <div class="fc-price">1 call</div>
+        <p class="fc-note">Tell us about your space and we'll come back with a price
+        in writing. No obligation.</p>
+      </div>""")
+    return "".join(cards)
+
+
 def cta_band(title=None, text=None):
     title = title or 'Ready for a place that <span class="tilt--gold">actually</span> feels clean?'
     text = text or (
         "Tell us about your space and we'll send a firm, itemised quote — "
-        "usually within one business hour. No pressure, no obligation."
+        "as quickly as we can. No pressure, no obligation."
     )
     return f"""
 <section class="section band cta-band">
@@ -447,13 +546,24 @@ def cta_band(title=None, text=None):
 
 
 def trust_strip():
+    """Only claims the owner has confirmed. Facts about how we operate —
+    not credentials — are safe to state; everything else is gated."""
     items = [
-        ("shield", "Insured &amp; bonded"),
-        ("check", "Police-checked cleaners"),
-        ("leaf", "Pet &amp; child-safe products"),
-        ("repeat", "24-hour re-clean guarantee"),
+        ("pin", f"{B['primary_area']} &amp; surrounding areas"),
+        ("clock", "Free quotes, no obligation"),
+        ("users", "Locally owned and operated"),
     ]
-    lis = "".join(f"<li>{icon(i, 17)} {t}</li>" for i, t in items)
+    if claim("insured") and claim("bonded"):
+        items.insert(0, ("shield", "Insured &amp; bonded"))
+    elif claim("insured"):
+        items.insert(0, ("shield", "Fully insured"))
+    if claim("police_checks"):
+        items.append(("check", "Police-checked cleaners"))
+    if claim("eco_products"):
+        items.append(("leaf", "Pet &amp; child-safe products"))
+    if CLAIMS.get("guarantee_hours"):
+        items.append(("repeat", f"{CLAIMS['guarantee_hours']}-hour re-clean guarantee"))
+    lis = "".join(f"<li>{icon(i, 17)} {t}</li>" for i, t in items[:4])
     return f'<ul class="trust-row">{lis}</ul>'
 
 
@@ -472,9 +582,9 @@ def estimator_block(form_id="estimator-form", with_cta=True):
     )
     freqs = [
         ("onetime", "One-time", ""),
-        ("monthly", "Monthly", '<span class="tag">-10%</span>'),
-        ("biweekly", "Every 2 weeks", '<span class="tag">-15%</span>'),
-        ("weekly", "Weekly", '<span class="tag">-20%</span>'),
+        ("monthly", "Monthly", DISCOUNT_TAG[0]),
+        ("biweekly", "Every 2 weeks", DISCOUNT_TAG[1]),
+        ("weekly", "Weekly", DISCOUNT_TAG[2]),
     ]
     frq = "".join(
         f'<input type="radio" name="frequency" id="frq-{v}" value="{v}"'
@@ -488,7 +598,9 @@ def estimator_block(form_id="estimator-form", with_cta=True):
     ]
     ext = "".join(
         f'<input type="checkbox" name="extras" id="ex-{v}" value="{v}">'
-        f'<label for="ex-{v}">{l} <span class="tag">+${p}</span></label>'
+        f'<label for="ex-{v}">{l}'
+        + (f' <span class="tag">+${p}</span>' if claim("show_prices") else "")
+        + "</label>"
         for v, l, p in extras
     )
     cta = (
@@ -497,9 +609,33 @@ def estimator_block(form_id="estimator-form", with_cta=True):
         if with_cta else
         f'<a class="btn btn--gold btn--block" href="quote.html">Send me this quote {icon("arrow", 16)}</a>'
     )
+
+    # Until the owner confirms his rates, the calculator collects the job
+    # details but publishes no dollar figure.
+    if claim("show_prices"):
+        result_body = f"""
+    <span class="est-result__label">Your estimated price</span>
+    <div class="est-price" id="est-price">$0</div>
+    <p class="est-sub" id="est-sub"></p>
+    <ul class="est-break" id="est-breakdown"></ul>
+    {cta}
+    <p class="est-foot">Instant estimate only. We confirm the final price in writing
+    before any work starts.</p>"""
+    else:
+        result_body = f"""
+    <span class="est-result__label">Your quote</span>
+    <div class="est-price" id="est-price-static">Priced<small>per job</small></div>
+    <p class="est-sub">Every space is different, so we price yours properly rather
+    than guessing. Send these details through and we'll come back with a written
+    quote.</p>
+    <ul class="est-break" id="est-breakdown"></ul>
+    {cta}
+    <p class="est-foot">No obligation, and no charge for the quote.</p>"""
+
+    prices_attr = "" if claim("show_prices") else ' data-prices="off"'
     return f"""
 <div class="estimator">
-  <form class="est-panel" id="{form_id}" novalidate>
+  <form class="est-panel" id="{form_id}"{prices_attr} novalidate>
     <div class="field field--full">
       <span class="field-label">What do you need cleaned?</span>
       <div class="choice">{svc}</div>
@@ -538,14 +674,7 @@ def estimator_block(form_id="estimator-form", with_cta=True):
     </div>
   </form>
 
-  <aside class="est-result">
-    <span class="est-result__label">Your estimated price</span>
-    <div class="est-price" id="est-price">$0</div>
-    <p class="est-sub" id="est-sub"></p>
-    <ul class="est-break" id="est-breakdown"></ul>
-    {cta}
-    <p class="est-foot">Instant estimate only. We confirm the final price in writing
-    before any work starts — and we never charge more than the quote.</p>
+  <aside class="est-result">{result_body}
   </aside>
 </div>
 """
@@ -555,7 +684,7 @@ def quote_form(form_id="quote-form", heading=True):
     head = (
         '<span class="eyebrow">Request a quote</span>'
         '<h2 class="h-md">Tell us about your space</h2>'
-        '<p class="lede mt-1">We reply within one business hour, Monday to Saturday.</p>'
+        '<p class="lede mt-1">Tell us what you need and we\'ll get back to you with a price.</p>'
         if heading else ""
     )
     return f"""
@@ -624,7 +753,7 @@ def quote_form(form_id="quote-form", heading=True):
         {icon('sparkle', 17)} Send my free quote request
       </button>
       <p class="field-hint mt-1" style="text-align:center">
-        Or call {PHONE} — we usually pick up on the first ring.
+        Or call {PHONE} if you would rather talk it through.
       </p>
     </div>
   </div>
@@ -634,38 +763,13 @@ def quote_form(form_id="quote-form", heading=True):
 
 
 # ---------------------------------------------------------------- content
-TESTIMONIALS = [
-    ("Priya M.", "Windermere, Edmonton",
-     "Booked a deep clean before my in-laws arrived and honestly the kitchen "
-     "looked better than the day we moved in. The team showed up on time, "
-     "worked around my toddler napping, and the price was exactly what was quoted."),
-    ("Dan R.", "Sherwood Park",
-     "We use them every two weeks for the house. Same two cleaners each time, "
-     "which matters — they know where everything goes now. Easiest recurring "
-     "bill I pay."),
-    ("Chelsea O.", "Downtown Edmonton",
-     "Move-out clean on a condo I was sure I'd lose the deposit on. Got every "
-     "dollar back. The landlord actually asked who I'd used."),
-    ("Marcus T.", "Leduc",
-     "Our office had carpet stains from years of coffee runs. They lifted 90% "
-     "of it and the place stopped smelling like an office. Booked them quarterly."),
-    ("Amrit S.", "Terwillegar",
-     "Three cats, long-haired, you can imagine. No complaints, no upcharges, "
-     "and they use products that don't set off my asthma. Worth every penny."),
-    ("Joanne K.", "St. Albert",
-     "I've tried four cleaning companies in this city. This is the first one "
-     "that sent the same crew twice and answered the phone when I called."),
-]
-
-
 def testimonial_cards(n=3, start=0):
+    """Renders nothing at all while TESTIMONIALS is empty."""
     cards = []
     for name, where, text in TESTIMONIALS[start:start + n]:
         initials = "".join(p[0] for p in name.split()[:2]).upper()
-        stars = "".join(icon("star", 14) for _ in range(5))
         cards.append(f"""
 <figure class="quote-card reveal">
-  <div class="stars" aria-label="5 out of 5 stars">{stars}</div>
   <blockquote>{text}</blockquote>
   <figcaption>
     <span class="avatar" aria-hidden="true">{initials}</span>
@@ -675,31 +779,74 @@ def testimonial_cards(n=3, start=0):
     return "".join(cards)
 
 
+def reviews_section(n=3, start=0, heading="What our customers say"):
+    """The whole section disappears until real reviews exist."""
+    if not TESTIMONIALS:
+        return ""
+    return f"""
+<section class="section">
+  <div class="shell">
+    <div class="section-head section-head--center">
+      <span class="eyebrow eyebrow--center">Reviews</span>
+      <h2 class="h-lg">{heading}</h2>
+    </div>
+    <div class="grid grid--3">{testimonial_cards(n, start)}</div>
+  </div>
+</section>
+"""
+
+
 HOME_FAQ = [
     ("Do I need to be home during the cleaning?",
-     "Not at all. Most of our recurring clients give us a door code or a key we keep "
-     "logged and secured. You're welcome to be home too — whatever you're comfortable with."),
-    ("Are you insured and bonded?",
-     "Yes. We carry full liability insurance and every cleaner is bonded and "
-     "criminal-record checked before their first shift. We can send you a copy of "
-     "our certificate of insurance on request."),
-    ("What if I'm not happy with the clean?",
-     "Call us within 24 hours and we come back and re-do whatever missed the mark, "
-     "free. No arguing, no invoice. That guarantee is why most of our work comes "
-     "from referrals."),
-    ("Do you bring your own supplies and equipment?",
-     "Yes — everything, including vacuums, microfibre and eco-friendly products that "
-     "are safe around pets and kids. If you'd rather we use your products because of "
-     "allergies or a specific surface, just leave them out and tell us."),
-    ("How much does a cleaning cost in Edmonton?",
-     "Most regular 3-bed / 2-bath homes in Edmonton land between $150 and $210 per "
-     "visit, and recurring plans come down from there. Use the instant estimator on "
-     "this page for a number specific to your home, then we confirm it in writing."),
-    ("Which areas do you cover?",
-     "Edmonton and the surrounding communities — St. Albert, Sherwood Park, Spruce "
-     "Grove, Leduc, Beaumont, Stony Plain, Fort Saskatchewan, Devon, Nisku, "
-     "Morinville and Ardrossan. If you're just outside that, call and ask."),
+     "Whatever suits you. You're welcome to be there, or you can arrange access with "
+     "us in advance — plenty of clients prefer to come home to a finished house."),
+    ("What areas do you cover?",
+     f"{B['primary_area']} is our main service area. We also cover "
+     + ", ".join(B["secondary_areas"][:-1])
+     + f" and {B['secondary_areas'][-1]}. Depending on the size and type of job we can "
+     "travel further — call and ask."),
+    ("How much does a cleaning cost?",
+     "It depends on the size of the space, the type of clean and how often you want "
+     "us. Tell us the details through the quote form or over the phone and we'll come "
+     "back with a written price. The quote is free and there's no obligation."),
+    ("What's the difference between a regular clean and a deep clean?",
+     "A regular clean maintains a space that's already in reasonable shape. A deep "
+     "clean covers the things that only need doing occasionally — inside the oven and "
+     "fridge, behind appliances, window tracks, light fixtures, baseboards scrubbed "
+     "rather than wiped. Many people start with a deep clean and then move to a "
+     "regular schedule."),
+    ("How far ahead do I need to book?",
+     "Get in touch and we'll tell you honestly what's available. If you need something "
+     "urgently, call rather than using the form — it's faster."),
+    ("Do you clean commercial premises as well as homes?",
+     "Yes. Offices, clinics, retail units, salons and common areas, scheduled around "
+     "your opening hours so your staff and customers aren't working around us."),
 ]
+
+
+def rate_table_section(c1, c2, c3, rows, title, lede, footnote):
+    """A published rate table is a pricing claim — it disappears entirely
+    until the owner confirms his numbers."""
+    if not claim("show_prices"):
+        return ""
+    return f"""
+<section class="section">
+  <div class="shell">
+    <div class="section-head">
+      <span class="eyebrow">Pricing</span>
+      <h2 class="h-lg">{title}</h2>
+      <p class="lede">{lede}</p>
+    </div>
+    <div class="table-wrap reveal">
+      <table class="rate-table">
+        <thead><tr><th>{c1}</th><th>{c2}</th><th>{c3}</th></tr></thead>
+        <tbody>{rows}</tbody>
+      </table>
+    </div>
+    <p class="field-hint mt-2">{footnote}</p>
+  </div>
+</section>
+"""
 
 
 def faq_block(pairs, title="Questions people ask before booking"):
@@ -725,24 +872,26 @@ def faq_block(pairs, title="Questions people ask before booking"):
 def build_home():
     services = [
         ("service-residential.svg", "Residential Cleaning", "residential-cleaning.html",
-         "Weekly, bi-weekly, monthly or one-time. Kitchens, bathrooms, floors, "
-         "dusting — done properly, by the same crew each visit.",
+         "Weekly, bi-weekly, monthly or one-time. Kitchens, bathrooms, floors "
+         "and dusting, worked through to a written checklist.",
          ["Regular &amp; recurring cleans", "Deep cleans", "Move in / move out", "Post-renovation"],
          "$135"),
         ("service-commercial.svg", "Commercial Cleaning", "commercial-cleaning.html",
          "Offices, clinics, salons, retail and small warehouses across Edmonton. "
-         "After-hours scheduling so your staff never trip over a mop.",
-         ["Offices &amp; clinics", "Retail &amp; salons", "Common areas", "Nightly or weekly contracts"],
+         "Scheduled around your opening hours.",
+         ["Offices &amp; clinics", "Retail &amp; salons", "Common areas", "Nightly or weekly schedules"],
          "$160"),
         ("service-carpet.svg", "Carpet &amp; Upholstery", "carpet-cleaning.html",
-         "Hot-water extraction that lifts ground-in traffic lanes, pet accidents "
-         "and years of spilled coffee. Dry in 4–6 hours.",
+         "Hot-water extraction for carpets, area rugs, sofas and mattresses — "
+         "traffic lanes, spills and pet accidents.",
          ["Carpets &amp; area rugs", "Sofas &amp; mattresses", "Pet odour treatment", "Stain protection"],
          "$89"),
     ]
     cards = ""
     for i, (img, title, href, desc, bullets, price) in enumerate(services):
         lis = "".join(f"<li>{b}</li>" for b in bullets)
+        price_line = (f'<div class="price-from">from <b>{price}</b></div>'
+                      if claim("show_prices") else "")
         cards += f"""
 <article class="card reveal" data-delay="{i * 90}">
   <div class="card__media">
@@ -754,7 +903,7 @@ def build_home():
     <p>{desc}</p>
     <ul class="card__list">{lis}</ul>
     <div class="card__foot">
-      <div class="price-from">from <b>{price}</b></div>
+      {price_line}
       <a class="card-link mt-1" href="{href}">See what's included {icon('arrow', 15)}</a>
     </div>
   </div>
@@ -772,9 +921,10 @@ def build_home():
     <div>
       <span class="eyebrow anim">{B['city']} · {B['region_full']}</span>
       <h1 class="anim">A cleaner home,<br><span class="tilt">without</span> the chasing.</h1>
-      <p class="lede anim">Reliable residential, commercial and carpet cleaning across
-      {B['city']} and the surrounding communities. Same crew every visit, a firm price
-      before we start, and a 24-hour guarantee if anything's missed.</p>
+      <p class="lede anim">Residential, commercial and carpet cleaning across
+      {B['city']} and {len(B['secondary_areas'])} surrounding communities. Tell us what
+      you need and we'll come back with a clear price in writing — free, and with no
+      obligation.</p>
       <div class="hero__actions anim">
         <a class="btn btn--gold btn--lg" href="quote.html">{icon('sparkle', 17)} Get a free quote</a>
         <a class="btn btn--ghost btn--lg" href="tel:{TEL}">{icon('phone', 17)} {PHONE}</a>
@@ -785,16 +935,7 @@ def build_home():
       <div class="collage__main">
         <img src="assets/img/hero-living-room.svg" alt="Freshly cleaned living room in an Edmonton home" width="1200" height="900" fetchpriority="high">
       </div>
-      <div class="float-card float-card--rating">
-        <span class="stars" aria-hidden="true">{''.join(icon('star', 14) for _ in range(5))}</span>
-        <span><span class="rating-num">4.9</span>
-        <span class="rating-sub">from local reviews</span></span>
-      </div>
-      <div class="float-card float-card--quote">
-        <span class="fc-label">3 bed / 2 bath</span>
-        <div class="fc-price">$165</div>
-        <p class="fc-note">Typical recurring clean in Edmonton — quoted in writing, never exceeded.</p>
-      </div>
+      {hero_float_cards()}
     </div>
   </div>
 </section>
@@ -818,18 +959,18 @@ def build_home():
 <section class="section band">
   <div class="shell">
     <div class="section-head">
-      <span class="eyebrow eyebrow--light">Why {B['city']} keeps calling us back</span>
-      <h2 class="h-lg">The boring things<br>done <span class="tilt--gold">reliably</span>.</h2>
+      <span class="eyebrow eyebrow--light">How we work</span>
+      <h2 class="h-lg">Straightforward, <span class="tilt--gold">local</span><br>and easy to reach.</h2>
     </div>
     <div class="stat-grid">
-      <div class="stat reveal"><div class="stat__num">24hr</div>
-        <div class="stat__label">Re-clean guarantee — we come back free</div></div>
-      <div class="stat reveal" data-delay="80"><div class="stat__num">4.9&#8239;★</div>
-        <div class="stat__label">Average rating from local customers</div></div>
-      <div class="stat reveal" data-delay="160"><div class="stat__num">12</div>
-        <div class="stat__label">Communities served around Edmonton</div></div>
-      <div class="stat reveal" data-delay="240"><div class="stat__num">$0</div>
-        <div class="stat__label">Surprise charges. The quote is the price.</div></div>
+      <div class="stat reveal"><div class="stat__num">3</div>
+        <div class="stat__label">Services — residential, commercial and carpet</div></div>
+      <div class="stat reveal" data-delay="80"><div class="stat__num">{len(B['areas'])}</div>
+        <div class="stat__label">Communities served across the Edmonton region</div></div>
+      <div class="stat reveal" data-delay="160"><div class="stat__num">{icon('wallet', 42, 1.6)}</div>
+        <div class="stat__label">Free quotes, in writing, with no obligation</div></div>
+      <div class="stat reveal" data-delay="240"><div class="stat__num">{icon('users', 42, 1.6)}</div>
+        <div class="stat__label">Locally owned and operated in {B['region_full']}</div></div>
     </div>
   </div>
 </section>
@@ -837,10 +978,10 @@ def build_home():
 <section class="section" id="estimate">
   <div class="shell">
     <div class="section-head section-head--center">
-      <span class="eyebrow eyebrow--center">Instant estimate</span>
-      <h2 class="h-lg">Know the price <span class="tilt">before</span> you call.</h2>
-      <p class="lede">Most cleaning companies make you book a walkthrough just to hear a
-      number. Move the sliders and see yours right now — then we confirm it in writing.</p>
+      <span class="eyebrow eyebrow--center">Free quote</span>
+      <h2 class="h-lg">Tell us what you <span class="tilt">need</span>.</h2>
+      <p class="lede">Set the details below and send them through. We'll come back with a
+      written price — no walkthrough needed for most homes, and no obligation.</p>
     </div>
     {estimator_block()}
   </div>
@@ -855,18 +996,18 @@ def build_home():
     <div class="steps steps--3">
       <div class="step reveal">
         <h3 class="h-sm">Tell us about your place</h3>
-        <p>Use the estimator above or call us. Takes about ninety seconds — bedrooms,
-        bathrooms, how often, anything unusual.</p>
+        <p>Use the form above or call us. Takes about ninety seconds — rooms,
+        how often, and anything unusual we should know about.</p>
       </div>
       <div class="step reveal" data-delay="90">
-        <h3 class="h-sm">Get a firm written quote</h3>
-        <p>We confirm the price and the checklist in writing, usually within one
-        business hour. If we can't do it for that, we say so upfront.</p>
+        <h3 class="h-sm">Get a written quote</h3>
+        <p>We put the price and the task list in writing so you know exactly what
+        you're getting and what it costs before you commit to anything.</p>
       </div>
       <div class="step reveal" data-delay="180">
-        <h3 class="h-sm">We show up and clean</h3>
-        <p>Same crew, same day each visit, all supplies included. Not happy with
-        something? Call within 24 hours and we re-do it free.</p>
+        <h3 class="h-sm">We book you in and clean</h3>
+        <p>We agree a date and an arrival window that works around you, then work
+        through the checklist we quoted on.</p>
       </div>
     </div>
   </div>
@@ -887,7 +1028,7 @@ def build_home():
           <li>{icon('check', 18)}<span><b>Baseboards, switch plates and door frames</b> — every visit, not just deep cleans.</span></li>
           <li>{icon('check', 18)}<span><b>Under and behind</b> the toaster, the couch cushions, the toilet base.</span></li>
           <li>{icon('check', 18)}<span><b>Fresh microfibre per room</b> so bathroom cloths never touch a kitchen counter.</span></li>
-          <li>{icon('check', 18)}<span><b>A written checklist</b> you get after every clean, so you know exactly what was done.</span></li>
+          <li>{icon('check', 18)}<span><b>A written checklist</b> agreed before we start, so you know exactly what's covered.</span></li>
         </ul>
         <a class="btn btn--ghost mt-3" href="residential-cleaning.html">See the full checklist {icon('arrow', 16)}</a>
       </div>
@@ -932,15 +1073,7 @@ def build_home():
   </div>
 </section>
 
-<section class="section">
-  <div class="shell">
-    <div class="section-head section-head--center">
-      <span class="eyebrow eyebrow--center">Reviews</span>
-      <h2 class="h-lg">What Edmonton says.</h2>
-    </div>
-    <div class="grid grid--3">{testimonial_cards(3)}</div>
-  </div>
-</section>
+{reviews_section(3, heading="What Edmonton says.")}
 
 <section class="section section--tight bg-paper">
   <div class="shell">
@@ -959,9 +1092,9 @@ def build_home():
     page(
         "index.html",
         f"Cleaning Services in {B['city']}, AB | {B['legal_name']}",
-        "Trusted residential, commercial and carpet cleaning in Edmonton and area. "
-        "Insured and bonded, firm written quotes, 24-hour satisfaction guarantee. "
-        "Get a free quote in one business hour.",
+        "Residential, commercial and carpet cleaning in Edmonton and "
+        f"{len(B['secondary_areas'])} surrounding communities. Locally owned, with a "
+        "free written quote and no obligation.",
         body,
         schemas=[local_business_schema(), faq_schema(HOME_FAQ)],
         keywords="cleaning services Edmonton, house cleaning Edmonton, commercial "
@@ -1024,31 +1157,32 @@ def build_residential():
 
     faqs = [
         ("How long does a house cleaning take?",
-         "A typical 3-bed / 2-bath home takes three to four hours with two cleaners. "
-         "First-time and deep cleans run longer because there's more built-up work to do."),
+         "It depends on the size of the home and whether it's a regular clean or a "
+         "deep clean. We'll give you a realistic time along with your quote rather "
+         "than a number that sounds good and then runs over."),
         ("What's the difference between a regular clean and a deep clean?",
          "A regular clean maintains a home that's already in decent shape. A deep clean "
          "adds the things that only need doing a few times a year — inside the oven and "
          "fridge, behind appliances, window tracks, light fixtures, baseboards scrubbed "
-         "rather than wiped. Most people start with one deep clean, then go recurring."),
-        ("Can I get the same cleaners every time?",
-         "Yes, and that's our default for recurring clients. The same crew learns your "
-         "home — where the spare vacuum bag lives, which door sticks, that the guest room "
-         "gets skipped in winter."),
+         "rather than wiped. Many people start with one deep clean, then go recurring."),
         ("Do you do laundry or dishes?",
-         "Dishes in the sink get washed or loaded as part of a standard kitchen clean. "
-         "Laundry is a $25 add-on — we'll run and fold one load while we work."),
+         "Dishes in the sink can be washed or loaded as part of a kitchen clean. "
+         "Laundry is available as an add-on — just tick it on the quote form and we'll "
+         "include it in your price."),
         ("What about pets?",
-         "No problem at all, and no pet surcharge. Just let us know so we watch the doors. "
-         "Our products are pet-safe. If an animal is anxious around strangers, tell us and "
-         "we'll work around a closed door."),
+         "Not a problem. Just let us know in advance so we know to watch the doors, and "
+         "tell us if an animal is nervous around strangers so we can work around a "
+         "closed door."),
+        ("Can you work around my schedule?",
+         "Yes — tell us the days and times that suit you when you request your quote "
+         "and we'll tell you honestly what we can fit."),
     ]
 
     body = page_head(
         "Residential",
-        'House Cleaning in Edmonton<br>done <span class="tilt">the same way</span> every time.',
+        'House Cleaning in Edmonton<br>to a <span class="tilt">written</span> checklist.',
         "Weekly, bi-weekly, monthly or one-off cleans for homes, condos and townhouses "
-        "across Edmonton and area. Same crew, written checklist, firm price.",
+        "across Edmonton and the surrounding communities.",
         [("Home", "index.html"), ("Services", "residential-cleaning.html"), ("Residential Cleaning", None)],
     ) + f"""
 <section class="section">
@@ -1057,17 +1191,17 @@ def build_residential():
       <div>
         <span class="eyebrow">What's included</span>
         <h2 class="h-lg">Every clean follows<br>the same <span class="tilt">checklist</span>.</h2>
-        <p class="lede mt-2">Not a vague "general tidy". A written list, the same one
-        every visit, that you get a copy of when we're done — so you can see exactly
-        what was covered and tell us if something should be added.</p>
+        <p class="lede mt-2">Not a vague "general tidy". A written list, agreed with you
+        before we start, so you can see exactly what's covered and tell us if something
+        should be added or dropped.</p>
         <ul class="check-list">
-          <li>{icon('check', 18)}<span><b>All supplies and equipment included</b> — nothing for you to buy or store.</span></li>
-          <li>{icon('check', 18)}<span><b>Eco-friendly, pet and child-safe products</b> as standard, or we'll use yours.</span></li>
-          <li>{icon('check', 18)}<span><b>Flexible entry</b> — be home, leave a key, or give us a door code.</span></li>
-          <li>{icon('check', 18)}<span><b>24-hour re-clean guarantee</b> on everything we touch.</span></li>
+          <li>{icon('check', 18)}<span><b>Regular or one-off</b> — weekly, every two weeks, monthly, or a single visit.</span></li>
+          <li>{icon('check', 18)}<span><b>Flexible entry</b> — be home, leave a key, or arrange a door code.</span></li>
+          <li>{icon('check', 18)}<span><b>Tell us your priorities</b> and we'll weight the time where it matters to you.</span></li>
+          <li>{icon('check', 18)}<span><b>A written quote</b> before anything is booked in.</span></li>
         </ul>
         <div class="hero__actions mt-3">
-          <a class="btn btn--gold" href="quote.html">Get my price</a>
+          <a class="btn btn--gold" href="quote.html">Get my quote</a>
           <a class="btn btn--ghost" href="book.html">{icon('calendar', 16)} Book online</a>
         </div>
       </div>
@@ -1088,44 +1222,23 @@ def build_residential():
   </div>
 </section>
 
-<section class="section">
-  <div class="shell">
-    <div class="section-head">
-      <span class="eyebrow">Pricing</span>
-      <h2 class="h-lg">Typical Edmonton prices.</h2>
-      <p class="lede">Real ranges, not "call for pricing". Recurring plans take 10–20%
-      off these numbers. Your written quote is the price you pay.</p>
-    </div>
-    <div class="table-wrap reveal">
-      <table class="rate-table">
-        <thead><tr><th>Home size</th><th>Typical duration</th><th>Price range</th></tr></thead>
-        <tbody>{rows}</tbody>
-      </table>
-    </div>
-    <p class="field-hint mt-2">Prices in CAD, including all supplies and GST-exclusive.
-    Heavier first-time cleans are quoted individually after a quick photo or video walkthrough.</p>
-  </div>
-</section>
+{rate_table_section("Home size", "Typical duration", "Price range", rows,
+                    "Typical Edmonton prices.",
+                    "Recurring plans are priced lower than one-off visits. Your written "
+                    "quote is the price you pay.",
+                    "Prices in CAD, GST-exclusive.")}
 
 <section class="section bg-sage">
   <div class="shell">
     <div class="section-head section-head--center">
-      <span class="eyebrow eyebrow--center">Instant estimate</span>
-      <h2 class="h-lg">Price your home now.</h2>
+      <span class="eyebrow eyebrow--center">Free quote</span>
+      <h2 class="h-lg">Price your home.</h2>
     </div>
     {estimator_block("estimator-form", with_cta=False)}
   </div>
 </section>
 
-<section class="section">
-  <div class="shell">
-    <div class="section-head section-head--center">
-      <span class="eyebrow eyebrow--center">Reviews</span>
-      <h2 class="h-lg">From homes like yours.</h2>
-    </div>
-    <div class="grid grid--3">{testimonial_cards(3, 0)}</div>
-  </div>
-</section>
+{reviews_section(3, 0, heading="From homes like yours.")}
 
 {faq_block(faqs, "Residential cleaning questions")}
 {cta_band()}
@@ -1133,9 +1246,9 @@ def build_residential():
     page(
         "residential-cleaning.html",
         f"House Cleaning {B['city']} | Weekly, Deep & Move-Out | {B['name']}",
-        "Professional house cleaning in Edmonton — weekly, bi-weekly, deep and "
-        "move-out cleans. Same crew every visit, all supplies included, from $120. "
-        "Insured and bonded. Free quote in one business hour.",
+        "House cleaning in Edmonton — weekly, bi-weekly, deep and move-out cleans "
+        "for homes, condos and townhouses across the Edmonton region. Free written "
+        "quote, no obligation.",
         body,
         schemas=[
             service_schema(
@@ -1179,32 +1292,30 @@ def build_commercial():
 
     faqs = [
         ("Do you clean outside business hours?",
-         "That's how most of our commercial contracts run — evenings, early mornings or "
-         "weekends. We'll work to whatever window keeps your team and customers "
-         "undisturbed."),
-        ("Are your staff insured and screened for commercial sites?",
-         "Yes. Full liability coverage, WCB, and every cleaner is bonded and "
-         "criminal-record checked. We'll provide certificates for your records or your "
-         "property manager's."),
-        ("Can we start with a trial before signing a contract?",
-         "Absolutely, and we'd encourage it. Most clients start with a one-off clean or a "
-         "two-week trial. No lock-in, no cancellation penalty on our monthly agreements."),
+         "Yes — evenings, early mornings or weekends. Tell us the window that keeps "
+         "your team and customers undisturbed and we'll work to it."),
+        ("Can we start with a trial before committing to a schedule?",
+         "Of course, and we'd encourage it. Starting with a one-off clean or a short "
+         "trial period is the sensible way to find out whether we're a fit before "
+         "anyone signs anything."),
         ("Do you supply consumables — paper, soap, liners?",
-         "We can. Most clients find it simpler to have us manage and restock washroom "
-         "supplies, billed at cost plus a small handling fee. Or keep supplying your own; "
-         "we'll just flag when stock runs low."),
+         "We can manage and restock washroom supplies for you, or you can keep "
+         "supplying your own and we'll flag when stock is running low. Tell us which "
+         "you'd prefer and we'll price it accordingly."),
         ("How do you handle keys, alarm codes and access?",
-         "Keys and fobs are logged, numbered and never labelled with your address. Alarm "
-         "codes are stored separately and only issued to the assigned crew. We can also "
-         "work with your existing access system or a lockbox."),
+         "Keys and fobs are numbered and stored securely, never labelled with your "
+         "address, and alarm codes are recorded separately from them. We can also work "
+         "with an existing access system or a lockbox if you have one."),
+        ("What documentation can you provide for our records?",
+         "Tell us what your business or property manager requires and we'll confirm "
+         "exactly what we can supply before you commit to anything."),
     ]
 
     body = page_head(
         "Commercial",
         'Commercial Cleaning<br>that keeps your doors <span class="tilt">open</span>.',
-        "Offices, clinics, retail, salons and common areas across Edmonton. "
-        "After-hours scheduling, screened and insured crews, flexible monthly "
-        "agreements with no lock-in.",
+        "Offices, clinics, retail, salons and common areas across Edmonton and the "
+        "surrounding communities, scheduled around your opening hours.",
         [("Home", "index.html"), ("Services", "commercial-cleaning.html"), ("Commercial Cleaning", None)],
     ) + f"""
 <section class="section">
@@ -1216,13 +1327,14 @@ def build_commercial():
       <div>
         <span class="eyebrow">How we work</span>
         <h2 class="h-lg">A schedule you can<br>actually <span class="tilt">plan around</span>.</h2>
-        <p class="lede mt-2">The complaint we hear most about other commercial cleaners
-        isn't the cleaning — it's not knowing whether anyone showed up. We fix that.</p>
+        <p class="lede mt-2">You're dealing with a local business, not a call centre —
+        so the person who quotes your site is the person you ring when something needs
+        changing.</p>
         <ul class="check-list">
-          <li>{icon('check', 18)}<span><b>Named account contact</b> who answers the phone, not a call centre.</span></li>
-          <li>{icon('check', 18)}<span><b>Digital sign-off after every visit</b> — you get a timestamped record of what was done.</span></li>
-          <li>{icon('check', 18)}<span><b>Monthly agreements, 30 days' notice</b> — no three-year contracts.</span></li>
-          <li>{icon('check', 18)}<span><b>WCB covered, fully insured</b>, certificates provided for your files.</span></li>
+          <li>{icon('check', 18)}<span><b>Scheduled around your hours</b> — evenings, early mornings or weekends.</span></li>
+          <li>{icon('check', 18)}<span><b>A written scope of work</b>, agreed task by task before we start.</span></li>
+          <li>{icon('check', 18)}<span><b>Change the scope whenever you need</b> — the price moves with it, transparently.</span></li>
+          <li>{icon('check', 18)}<span><b>Start with a trial</b> rather than a long commitment.</span></li>
         </ul>
         <div class="hero__actions mt-3">
           <a class="btn btn--gold" href="quote.html">Request a site quote</a>
@@ -1247,13 +1359,13 @@ def build_commercial():
   <div class="shell">
     <div class="section-head">
       <span class="eyebrow eyebrow--light">Getting started</span>
-      <h2 class="h-lg">From call to first clean<br>in about a <span class="tilt--gold">week</span>.</h2>
+      <h2 class="h-lg">Three steps to a<br>working <span class="tilt--gold">schedule</span>.</h2>
     </div>
     <div class="steps steps--3">
       <div class="step reveal">
         <h3 class="h-sm">Walkthrough</h3>
-        <p>We visit the site, measure, and agree the scope room by room. Takes about
-        twenty minutes and costs nothing.</p>
+        <p>We visit the site, look at what's actually involved, and agree the scope
+        area by area. It costs nothing.</p>
       </div>
       <div class="step reveal" data-delay="90">
         <h3 class="h-sm">Written scope &amp; price</h3>
@@ -1261,37 +1373,29 @@ def build_commercial():
         any time — the price moves with the scope, transparently.</p>
       </div>
       <div class="step reveal" data-delay="180">
-        <h3 class="h-sm">Crew assigned</h3>
-        <p>A named crew, a fixed schedule, and a first-month check-in to adjust anything
-        that isn't landing right.</p>
+        <h3 class="h-sm">Schedule agreed</h3>
+        <p>We settle on the days and times that keep your staff and customers
+        undisturbed, then check in early on to adjust anything that isn't working.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="section">
-  <div class="shell">
-    <div class="section-head section-head--center">
-      <span class="eyebrow eyebrow--center">Reviews</span>
-      <h2 class="h-lg">From local businesses.</h2>
-    </div>
-    <div class="grid grid--3">{testimonial_cards(3, 3)}</div>
-  </div>
-</section>
+{reviews_section(3, 3, heading="From local businesses.")}
 
 {faq_block(faqs, "Commercial cleaning questions")}
 {cta_band(
     'Get a <span class="tilt--gold">site-specific</span> quote.',
-    "Tell us the square footage and how often you need us. We'll book a twenty-minute "
-    "walkthrough and come back with a written scope and a fixed per-visit price."
+    "Tell us the square footage and how often you need us. We'll arrange a walkthrough "
+    "and come back with a written scope and a per-visit price."
 )}
 """
     page(
         "commercial-cleaning.html",
         f"Commercial & Office Cleaning {B['city']} | {B['name']}",
         "Commercial cleaning in Edmonton for offices, clinics, retail and common "
-        "areas. After-hours schedules, insured and WCB-covered crews, monthly "
-        "agreements with no lock-in. Free site walkthrough.",
+        "areas across the Edmonton region. Scheduled around your opening hours. "
+        "Free site walkthrough and written quote.",
         body,
         schemas=[
             service_schema(
@@ -1316,8 +1420,8 @@ def build_carpet():
          "the furnace fan and it's quicker."),
         ("Will the stains come back?",
          "Sometimes a stain 'wicks' back as the carpet dries — that's residue deep in the "
-         "backing rising to the surface. If it reappears within 48 hours, call us and we "
-         "re-treat that spot free."),
+         "backing rising to the surface as moisture leaves. If that happens, get in touch "
+         "and we'll talk through re-treating the spot."),
         ("Can you get rid of pet smells?",
          "Usually, yes. Surface cleaning won't do it — urine soaks into the backing and "
          "underlay. We use an enzyme treatment that breaks down the source rather than "
@@ -1348,8 +1452,8 @@ def build_carpet():
         "Carpet &amp; Upholstery",
         'Carpet Cleaning that lifts<br>what a vacuum <span class="tilt">can\'t</span>.',
         "Hot-water extraction for carpets, area rugs, sofas and mattresses across "
-        "Edmonton. Traffic lanes, pet accidents and years of spills — dry in four "
-        "to six hours.",
+        "Edmonton and the surrounding communities — traffic lanes, pet accidents "
+        "and years of spills.",
         [("Home", "index.html"), ("Services", "carpet-cleaning.html"), ("Carpet Cleaning", None)],
     ) + f"""
 <section class="section">
@@ -1365,7 +1469,7 @@ def build_carpet():
           <li>{icon('check', 18)}<span><b>Pre-vacuum and pre-spray</b> so the solution has time to break the soil down.</span></li>
           <li>{icon('check', 18)}<span><b>Agitation on traffic lanes</b> — the doorways and hallways that always go first.</span></li>
           <li>{icon('check', 18)}<span><b>Hot extraction rinse</b> that leaves no sticky detergent residue behind to re-attract dirt.</span></li>
-          <li>{icon('check', 18)}<span><b>Groomed and speed-dried</b>, so you're back on it in four to six hours.</span></li>
+          <li>{icon('check', 18)}<span><b>Groomed and dried</b> before we leave, and we'll tell you how long to stay off it.</span></li>
         </ul>
         <div class="hero__actions mt-3">
           <a class="btn btn--gold" href="quote.html">Get a carpet quote</a>
@@ -1398,25 +1502,11 @@ def build_carpet():
   </div>
 </section>
 
-<section class="section">
-  <div class="shell">
-    <div class="section-head">
-      <span class="eyebrow">Pricing</span>
-      <h2 class="h-lg">Carpet &amp; upholstery rates.</h2>
-      <p class="lede">Flat rates, published. Minimum charge $139 — we'd rather tell you
-      that now than after we've parked outside.</p>
-    </div>
-    <div class="table-wrap reveal">
-      <table class="rate-table">
-        <thead><tr><th>Service</th><th>Detail</th><th>Price</th></tr></thead>
-        <tbody>{rows}</tbody>
-      </table>
-    </div>
-    <p class="field-hint mt-2">Prices in CAD, GST-exclusive. A "room" is up to 250 sq ft;
-    larger open-plan spaces count as two. Combined house-clean and carpet bookings get
-    10% off the carpet portion.</p>
-  </div>
-</section>
+{rate_table_section("Service", "Detail", "Price", rows,
+                    "Carpet &amp; upholstery rates.",
+                    "Flat rates, published, so you know before we park outside.",
+                    'Prices in CAD, GST-exclusive. A "room" is up to 250 sq ft; larger '
+                    "open-plan spaces count as two.")}
 
 <section class="section bg-paper">
   <div class="shell">
@@ -1428,7 +1518,7 @@ def build_carpet():
       <article class="card reveal"><div class="card__body"><h3 class="h-sm">Sofas &amp; armchairs</h3>
         <p>Fabric upholstery extracted and deodorised. We test colourfastness first.</p></div></article>
       <article class="card reveal" data-delay="70"><div class="card__body"><h3 class="h-sm">Mattresses</h3>
-        <p>Both sides, with an anti-allergen treatment for dust mites.</p></div></article>
+        <p>Both sides, extracted and deodorised.</p></div></article>
       <article class="card reveal" data-delay="140"><div class="card__body"><h3 class="h-sm">Area rugs</h3>
         <p>Cleaned on-site where suitable, priced by the square foot.</p></div></article>
       <article class="card reveal" data-delay="210"><div class="card__body"><h3 class="h-sm">Vehicle interiors</h3>
@@ -1440,16 +1530,16 @@ def build_carpet():
 {faq_block(faqs, "Carpet cleaning questions")}
 {cta_band(
     'Book the carpets and the house <span class="tilt--gold">together</span>.',
-    "Combine a house clean with carpet extraction and we take 10% off the carpet work. "
-    "One visit, one invoice, one crew."
+    "Combining a house clean with carpet extraction means one visit and one invoice. "
+    "Ask for both on your quote and we'll price them as a single job."
 )}
 """
     page(
         "carpet-cleaning.html",
-        f"Carpet Cleaning {B['city']} | Steam Extraction from $139 | {B['name']}",
+        f"Carpet Cleaning {B['city']} | Hot-Water Extraction | {B['name']}",
         "Carpet and upholstery cleaning in Edmonton using hot-water extraction. "
-        "Traffic lanes, pet odours and stains lifted, dry in 4–6 hours. Flat "
-        "published rates from $139. Free quote.",
+        "Traffic lanes, pet odours and stains, plus sofas, mattresses and area "
+        "rugs. Free written quote.",
         body,
         schemas=[
             service_schema(
@@ -1531,15 +1621,7 @@ def build_gallery():
   </div>
 </section>
 
-<section class="section bg-paper">
-  <div class="shell">
-    <div class="section-head section-head--center">
-      <span class="eyebrow eyebrow--center">Reviews</span>
-      <h2 class="h-lg">What people said afterwards.</h2>
-    </div>
-    <div class="grid grid--3">{testimonial_cards(6)}</div>
-  </div>
-</section>
+{reviews_section(6, heading="What people said afterwards.")}
 
 {cta_band()}
 """
@@ -1556,30 +1638,29 @@ def build_gallery():
 def build_about():
     body = page_head(
         "About us",
-        'A small local crew,<br>not a <span class="tilt">franchise</span>.',
-        f"{B['legal_name']} is an Edmonton-owned cleaning company. We're deliberately "
-        "small, which is why you get the same faces and someone who answers the phone.",
+        'A local company,<br>not a <span class="tilt">franchise</span>.',
+        f"{B['legal_name']} is a locally owned cleaning company based in "
+        f"{B['city']}, {B['region_full']}.",
         [("Home", "index.html"), ("About", None)],
     ) + f"""
 <section class="section">
   <div class="shell">
     <div class="split">
       <div class="split__media reveal">
-        <img src="assets/img/about-crew.svg" alt="The Fast and Perfect cleaning crew" loading="lazy" width="1200" height="900">
+        <img src="assets/img/about-crew.svg" alt="The Fast and Perfect cleaning team" loading="lazy" width="1200" height="900">
       </div>
       <div class="prose">
-        <span class="eyebrow">Our story</span>
-        <h2 class="h-lg">Built on the jobs<br>nobody else <span class="tilt">finished</span>.</h2>
-        <p class="lede mt-2">Fast and Perfect started because of a recurring complaint we
-        kept hearing from Edmonton homeowners: the first clean was great, and every one
-        after that got a little thinner.</p>
-        <p class="mt-2">So we built the company around the opposite. A written checklist
-        that doesn't shrink. The same crew assigned to your address so standards don't
-        reset with every new face. And a guarantee with an actual deadline attached —
-        call within 24 hours and we come back, free, no debate.</p>
-        <p>We're not the cheapest cleaners in the city and we don't pretend to be. We're
-        the ones who still turn up in February when it's minus thirty and the last company
-        stopped answering.</p>
+        <span class="eyebrow">Who we are</span>
+        <h2 class="h-lg">Cleaning, done<br><span class="tilt">properly</span>.</h2>
+        <p class="lede mt-2">{B['legal_name']} provides residential, commercial and
+        carpet cleaning across {B['city']} and {len(B['secondary_areas'])} surrounding
+        communities.</p>
+        <p class="mt-2">We're a local business, which means you're dealing with the
+        people actually doing the work — not a call centre in another province. When you
+        ring, someone here answers.</p>
+        <p>Every job starts with a written quote and an agreed task list, so there's no
+        ambiguity about what's included or what it costs. If something isn't right, tell
+        us and we'll put it right.</p>
       </div>
     </div>
   </div>
@@ -1588,18 +1669,18 @@ def build_about():
 <section class="section band">
   <div class="shell">
     <div class="section-head">
-      <span class="eyebrow eyebrow--light">What we promise</span>
+      <span class="eyebrow eyebrow--light">How we work</span>
       <h2 class="h-lg">Four things, <span class="tilt--gold">every time</span>.</h2>
     </div>
     <div class="stat-grid">
-      <div class="stat reveal"><div class="stat__num">{icon('shield', 42, 1.6)}</div>
-        <div class="stat__label">Insured, bonded and WCB covered. Certificates on request.</div></div>
-      <div class="stat reveal" data-delay="80"><div class="stat__num">{icon('users', 42, 1.6)}</div>
-        <div class="stat__label">The same crew at your address, not a rotating roster.</div></div>
-      <div class="stat reveal" data-delay="160"><div class="stat__num">{icon('wallet', 42, 1.6)}</div>
-        <div class="stat__label">The written quote is the invoice. No day-of surprises.</div></div>
-      <div class="stat reveal" data-delay="240"><div class="stat__num">{icon('repeat', 42, 1.6)}</div>
-        <div class="stat__label">24 hours to tell us it's wrong. We re-do it free.</div></div>
+      <div class="stat reveal"><div class="stat__num">{icon('wallet', 42, 1.6)}</div>
+        <div class="stat__label">A written quote before anything is booked in.</div></div>
+      <div class="stat reveal" data-delay="80"><div class="stat__num">{icon('check', 42, 1.6)}</div>
+        <div class="stat__label">An agreed task list, so you know what's covered.</div></div>
+      <div class="stat reveal" data-delay="160"><div class="stat__num">{icon('phone', 42, 1.6)}</div>
+        <div class="stat__label">A local number, answered by the people doing the work.</div></div>
+      <div class="stat reveal" data-delay="240"><div class="stat__num">{icon('pin', 42, 1.6)}</div>
+        <div class="stat__label">{len(B['areas'])} communities across the Edmonton region.</div></div>
     </div>
   </div>
 </section>
@@ -1607,47 +1688,39 @@ def build_about():
 <section class="section">
   <div class="shell">
     <div class="section-head">
-      <span class="eyebrow">How we hire</span>
-      <h2 class="h-lg">Who's in your home.</h2>
+      <span class="eyebrow">What to expect</span>
+      <h2 class="h-lg">From first call to finished job.</h2>
     </div>
     <div class="steps steps--3">
       <div class="step reveal">
-        <h3 class="h-sm">Screened before day one</h3>
-        <p>Criminal-record check, reference checks and proof of work eligibility before
-        anyone is assigned to a client address.</p>
+        <h3 class="h-sm">A straight answer</h3>
+        <p>Tell us what you need and we'll tell you honestly whether we're the right
+        fit, what it involves and what it will cost.</p>
       </div>
       <div class="step reveal" data-delay="90">
-        <h3 class="h-sm">Trained on our checklist</h3>
-        <p>Two weeks paired with a senior cleaner. Nobody works a property alone until
-        they've been signed off room by room.</p>
+        <h3 class="h-sm">An agreed checklist</h3>
+        <p>We put the scope in writing before we start, so nothing is assumed and
+        nothing gets quietly dropped.</p>
       </div>
       <div class="step reveal" data-delay="180">
-        <h3 class="h-sm">Paid properly, kept long</h3>
-        <p>We pay above the going rate for this industry because turnover is what
-        destroys quality. The crew that starts with you tends to stay with you.</p>
+        <h3 class="h-sm">Work you can check</h3>
+        <p>Walk through it with us or tell us afterwards. If something's been missed,
+        we want to hear about it.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="section bg-paper">
-  <div class="shell">
-    <div class="section-head section-head--center">
-      <span class="eyebrow eyebrow--center">Reviews</span>
-      <h2 class="h-lg">In their words.</h2>
-    </div>
-    <div class="grid grid--3">{testimonial_cards(3, 3)}</div>
-  </div>
-</section>
+{reviews_section(3, 3, heading="In their words.")}
 
 {cta_band()}
 """
     page(
         "about.html",
         f"About {B['legal_name']} | Edmonton Cleaning Company",
-        f"{B['legal_name']} is a locally owned Edmonton cleaning company. Screened "
-        "and bonded crews, written checklists, and a 24-hour satisfaction "
-        "guarantee on every clean.",
+        f"{B['legal_name']} is a locally owned cleaning company serving Edmonton "
+        f"and {len(B['secondary_areas'])} surrounding communities — residential, "
+        "commercial and carpet cleaning to an agreed written checklist.",
         body,
         schemas=[
             local_business_schema(),
@@ -1657,32 +1730,52 @@ def build_about():
 
 
 def build_areas():
-    cards = ""
     blurbs = {
-        "Edmonton": "Our home base. Full coverage from Castle Downs to Summerside, "
-                    "including downtown condos and the river valley communities.",
-        "St. Albert": "Weekly and bi-weekly residential routes, plus commercial "
-                      "contracts along St. Albert Trail.",
-        "Sherwood Park": "Residential cleaning across Strathcona County, with "
-                         "after-hours commercial work in the business park.",
-        "Spruce Grove": "Homes, acreages and small commercial sites — no travel "
-                        "surcharge inside the town limits.",
-        "Leduc": "Residential and commercial, including short-turnaround move-out "
-                 "cleans near the airport.",
-        "Beaumont": "Family homes and new builds. Popular for post-construction "
-                    "and first-occupancy cleans.",
-        "Stony Plain": "Regular residential routes on Tuesdays and Fridays.",
-        "Fort Saskatchewan": "Residential plus industrial office and lunchroom "
-                             "contracts.",
-        "Devon": "Residential cleaning and carpet extraction, scheduled around "
-                 "our Leduc route.",
+        "St. Albert": "Residential and commercial cleaning throughout St. Albert.",
+        "Sherwood Park": "Homes and businesses across Strathcona County.",
+        "Spruce Grove": "Homes, acreages and small commercial premises.",
+        "Stony Plain": "Residential and commercial cleaning across the town.",
+        "Leduc": "Residential and commercial, including move-in and move-out cleans.",
+        "Beaumont": "Family homes and new builds, including post-construction cleans.",
+        "Fort Saskatchewan": "Residential cleaning plus office and lunchroom work.",
         "Nisku": "Commercial and industrial offices, shops and lunchrooms.",
-        "Morinville": "Residential cleaning on a bi-weekly and monthly rotation.",
+        "Devon": "Residential cleaning and carpet extraction.",
+        "Acheson": "Industrial and commercial premises across the business park.",
+        "Morinville": "Residential cleaning on a regular or one-off basis.",
         "Ardrossan": "Acreages and family homes east of Sherwood Park.",
+        "Gibbons": "Residential cleaning for homes and acreages.",
+        "Legal": "Residential and small commercial cleaning.",
+        "Bon Accord": "Residential cleaning for homes and acreages.",
+        "Calmar": "Residential and small commercial cleaning.",
+        "Thorsby": "Residential cleaning for homes and acreages.",
+        "Millet": "Residential and small commercial cleaning.",
+        "New Sarepta": "Residential cleaning for homes and acreages.",
     }
-    for i, a in enumerate(B["areas"]):
+
+    # Edmonton leads on its own — it's the primary market for both SEO and ads.
+    primary_card = f"""
+<article class="card reveal" style="border-color:var(--sage-deep)">
+  <div class="card__body">
+    <span class="eyebrow">Primary service area</span>
+    <h3 class="h-md">{icon('pin', 20)} {B['primary_area']}</h3>
+    <p>Our main service area — full coverage across the city, from Castle Downs to
+    Summerside, including downtown condos and the river valley communities.
+    Residential, commercial and carpet cleaning.</p>
+    <ul class="card__list">
+      <li>Residential — regular, deep, move in / move out</li>
+      <li>Commercial — offices, clinics, retail, common areas</li>
+      <li>Carpet &amp; upholstery — hot-water extraction</li>
+    </ul>
+    <div class="card__foot">
+      <a class="btn btn--gold" href="quote.html">Get an {B['primary_area']} quote {icon('arrow', 15)}</a>
+    </div>
+  </div>
+</article>"""
+
+    cards = ""
+    for i, a in enumerate(B["secondary_areas"]):
         cards += f"""
-<article class="card reveal" data-delay="{i * 40}">
+<article class="card reveal" data-delay="{min(i, 8) * 40}">
   <div class="card__body">
     <h3 class="h-sm">{icon('pin', 17)} {a}</h3>
     <p>{blurbs.get(a, 'Residential and commercial cleaning available.')}</p>
@@ -1695,12 +1788,31 @@ def build_areas():
     body = page_head(
         "Coverage",
         f'Cleaning across {B["city"]}<br>and <span class="tilt">the region</span>.',
-        "We cover Edmonton and eleven surrounding communities. If you're just outside "
-        "the list, call and ask — we'll tell you honestly whether we can serve you well.",
+        f"{B['primary_area']} is our primary service area. We also serve "
+        f"{len(B['secondary_areas'])} surrounding communities — and depending on the "
+        "size and type of job, we can travel further. If you're outside the list, "
+        "call and ask.",
         [("Home", "index.html"), ("Areas Served", None)],
     ) + f"""
 <section class="section">
   <div class="shell shell--wide">
+    <div class="split" style="align-items:stretch">
+      {primary_card}
+      <div class="split__media reveal">
+        <img src="assets/img/gallery-living.svg" alt="Cleaning services in {B['primary_area']}, Alberta" loading="lazy" width="1200" height="900">
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section--tight">
+  <div class="shell shell--wide">
+    <div class="section-head">
+      <span class="eyebrow">Secondary service areas</span>
+      <h2 class="h-lg">{len(B['secondary_areas'])} surrounding communities.</h2>
+      <p class="lede">All within our standard service area, covering residential,
+      commercial and carpet cleaning.</p>
+    </div>
     <div class="grid grid--3">{cards}</div>
   </div>
 </section>
@@ -1708,10 +1820,10 @@ def build_areas():
 <section class="section bg-paper">
   <div class="shell">
     <div class="section-head">
-      <span class="eyebrow">Edmonton neighbourhoods</span>
-      <h2 class="h-lg">Where we work most.</h2>
-      <p class="lede">These come up most often on our routes — but we serve the whole
-      city, not just these.</p>
+      <span class="eyebrow">{B['primary_area']} neighbourhoods</span>
+      <h2 class="h-lg">Across the whole city.</h2>
+      <p class="lede">A few of the areas we're asked about most — but we cover all of
+      {B['primary_area']}, not just these.</p>
     </div>
     <div class="area-cloud reveal">{hoods}</div>
   </div>
@@ -1722,15 +1834,15 @@ def build_areas():
     <div class="split">
       <div>
         <span class="eyebrow eyebrow--light">Travel &amp; scheduling</span>
-        <h2 class="h-lg">No hidden <span class="tilt--gold">travel fees</span>.</h2>
+        <h2 class="h-lg">Outside the list? <span class="tilt--gold">Ask.</span></h2>
         <p class="lede mt-2">Every community on this page is inside our standard service
-        area. The price you're quoted covers getting there.</p>
+        area. We also take on work further out depending on the size and type of job.</p>
         <ul class="check-list" style="--ink-soft:rgba(246,242,234,.78)">
-          <li>{icon('check', 18)}<span style="color:rgba(246,242,234,.82)"><b style="color:#fffdf8">Same-week availability</b> for most residential bookings.</span></li>
-          <li>{icon('check', 18)}<span style="color:rgba(246,242,234,.82)"><b style="color:#fffdf8">Fixed weekday routes</b> per community, so recurring clients get a consistent slot.</span></li>
-          <li>{icon('check', 18)}<span style="color:rgba(246,242,234,.82)"><b style="color:#fffdf8">Emergency and same-day</b> cleans subject to crew availability — call and ask.</span></li>
+          <li>{icon('check', 18)}<span style="color:rgba(246,242,234,.82)"><b style="color:#fffdf8">{B['primary_area']} first</b> — it's our primary market and where most of our work is.</span></li>
+          <li>{icon('check', 18)}<span style="color:rgba(246,242,234,.82)"><b style="color:#fffdf8">Surrounding communities</b> covered for residential, commercial and carpet work.</span></li>
+          <li>{icon('check', 18)}<span style="color:rgba(246,242,234,.82)"><b style="color:#fffdf8">Larger jobs further out</b> — tell us where you are and what's involved and we'll give you a straight answer.</span></li>
         </ul>
-        <a class="btn btn--gold mt-3" href="book.html">{icon('calendar', 16)} Check availability</a>
+        <a class="btn btn--gold mt-3" href="quote.html">{icon('sparkle', 16)} Request a quote</a>
       </div>
       <div class="split__media reveal">
         <img src="assets/img/gallery-hallway.svg" alt="Cleaned common area hallway in an Edmonton building" loading="lazy" width="1200" height="900">
@@ -1744,22 +1856,24 @@ def build_areas():
     page(
         "service-areas.html",
         f"Areas Served — Cleaning in {B['city']}, St. Albert & Sherwood Park",
-        "Fast and Perfect cleans homes and businesses across Edmonton, St. Albert, "
-        "Sherwood Park, Spruce Grove, Leduc, Beaumont and nine more communities. "
-        "No travel surcharges.",
+        "Fast and Perfect cleans homes and businesses across Edmonton — our primary "
+        "service area — plus St. Albert, Sherwood Park, Spruce Grove, Stony Plain, "
+        f"Leduc, Beaumont and {len(B['secondary_areas']) - 6} more communities.",
         body,
         schemas=[breadcrumbs([("Home", "index.html"), ("Areas Served", None)])],
-        keywords="cleaning services St Albert, cleaners Sherwood Park, house "
-                 "cleaning Spruce Grove, cleaning company Leduc, Beaumont cleaners",
+        keywords=", ".join(
+            [f"cleaning services {B['primary_area']}", f"house cleaning {B['primary_area']}"]
+            + [f"cleaners {a}" for a in B["secondary_areas"][:8]]
+        ),
     )
 
 
 def build_quote():
     body = page_head(
         "Free quote",
-        'Get your price<br>in <span class="tilt">one hour</span>.',
-        "Price it yourself with the estimator, then send it over. We reply within one "
-        "business hour with a firm written quote — no walkthrough needed for most homes.",
+        'Get your <span class="tilt">free</span> quote.',
+        "Fill in the details below and send them over. We'll come back with a written "
+        "quote — no walkthrough needed for most homes, and no obligation.",
         [("Home", "index.html"), ("Free Quote", None)],
     ) + f"""
 <section class="section section--tight">
@@ -1786,7 +1900,7 @@ def build_quote():
               <span class="v"><a href="mailto:{B['email']}">{B['email']}</a></span></span></li>
             <li><span class="ico">{icon('clock', 18)}</span>
               <span><span class="k">Reply time</span>
-              <span class="v">Within 1 business hour<span>Mon–Sat</span></span></span></li>
+              <span class="v">A written quote<span>No obligation, no charge</span></span></span></li>
           </ul>
         </div>
         <div class="info-card">
@@ -1798,11 +1912,11 @@ def build_quote():
             </div>
             <div class="step" style="padding-top:2.4rem">
               <h3 class="h-sm">You get a firm price</h3>
-              <p>In writing, itemised, with the checklist attached. Valid 30 days.</p>
+              <p>In writing, itemised, with the task list attached — so you can compare it properly.</p>
             </div>
             <div class="step" style="padding-top:2.4rem">
               <h3 class="h-sm">You decide</h3>
-              <p>No follow-up pestering. One reply, and we leave it with you.</p>
+              <p>Take your time. We send the quote and leave the decision with you.</p>
             </div>
           </div>
         </div>
@@ -1821,8 +1935,8 @@ def build_quote():
     page(
         "quote.html",
         f"Free Cleaning Quote {B['city']} | Instant Estimate | {B['name']}",
-        "Get an instant cleaning estimate for your Edmonton home or business, then a "
-        "firm written quote within one business hour. No walkthrough needed for most homes.",
+        "Request a free cleaning quote for your Edmonton home or business. Tell us the "
+        "details and we send back a written price — no walkthrough needed for most homes.",
         body,
         schemas=[breadcrumbs([("Home", "index.html"), ("Free Quote", None)])],
         keywords="cleaning quote Edmonton, house cleaning prices Edmonton, free "
@@ -1851,9 +1965,9 @@ def build_book():
         f'{" checked" if i == 0 else ""}><label for="bsvc-{v}">{l}</label>'
         for i, (v, l) in enumerate(services)
     )
-    freqs = [("onetime", "One-time", ""), ("monthly", "Monthly", '<span class="tag">-10%</span>'),
-             ("biweekly", "Every 2 weeks", '<span class="tag">-15%</span>'),
-             ("weekly", "Weekly", '<span class="tag">-20%</span>')]
+    freqs = [("onetime", "One-time", ""), ("monthly", "Monthly", DISCOUNT_TAG[0]),
+             ("biweekly", "Every 2 weeks", DISCOUNT_TAG[1]),
+             ("weekly", "Weekly", DISCOUNT_TAG[2])]
     frq = "".join(
         f'<input type="radio" name="frequency" id="bfrq-{v}" value="{v}"'
         f'{" checked" if i == 0 else ""}><label for="bfrq-{v}">{l}{t}</label>'
@@ -1864,9 +1978,27 @@ def build_book():
               ("garage", "Garage", 45), ("basement", "Finished basement", 40)]
     ext = "".join(
         f'<input type="checkbox" name="extras" id="bex-{v}" value="{v}">'
-        f'<label for="bex-{v}">{l} <span class="tag">+${p}</span></label>'
+        f'<label for="bex-{v}">{l}'
+        + (f' <span class="tag">+${p}</span>' if claim("show_prices") else "")
+        + "</label>"
         for v, l, p in extras
     )
+    book_prices_attr = "" if claim("show_prices") else ' data-prices="off"'
+    if claim("show_prices"):
+        summary_total = f"""
+          <div class="summary-total">
+            <span class="k">Estimated</span>
+            <span class="v" id="booking-total">$0</span>
+          </div>
+          <p class="field-hint mt-2">Estimate only — confirmed in writing before we start.</p>"""
+    else:
+        summary_total = """
+          <div class="summary-total">
+            <span class="k">Price</span>
+            <span class="v" style="font-size:1.1rem">Quoted in writing</span>
+          </div>
+          <p class="field-hint mt-2">We confirm the slot and the price with you before
+          anything is booked in. Nothing is charged online.</p>"""
 
     body = page_head(
         "Book online",
@@ -1878,7 +2010,7 @@ def build_book():
 <section class="section">
   <div class="shell">
     <div class="contact-grid">
-      <form class="est-panel" id="booking-form" data-form novalidate>
+      <form class="est-panel" id="booking-form"{book_prices_attr} data-form novalidate>
         <span class="eyebrow">Step 1 — the job</span>
         <div class="field field--full mt-1">
           <span class="field-label">Service</span>
@@ -1988,13 +2120,7 @@ def build_book():
         <div class="summary-card">
           <span class="eyebrow">Your booking</span>
           <h3 class="h-sm">Summary</h3>
-          <ul class="summary-list" id="booking-summary"></ul>
-          <div class="summary-total">
-            <span class="k">Estimated</span>
-            <span class="v" id="booking-total">$0</span>
-          </div>
-          <p class="field-hint mt-2">Estimate only — confirmed in writing before we start.
-          Recurring discounts are already included above.</p>
+          <ul class="summary-list" id="booking-summary"></ul>{summary_total}
           <a class="btn btn--ghost btn--block mt-2" href="tel:{TEL}">{icon('phone', 16)} Prefer to call?</a>
         </div>
       </aside>
@@ -2012,8 +2138,8 @@ def build_book():
         "book.html",
         f"Book a Cleaning Online — {B['city']} | {B['name']}",
         "Book residential, commercial or carpet cleaning in Edmonton online. Pick "
-        "your date and arrival window — we confirm within one business hour. Free "
-        "cancellation up to 24 hours before.",
+        "your date and arrival window and we will confirm it with you. Nothing is "
+        "charged online.",
         body,
         schemas=[breadcrumbs([("Home", "index.html"), ("Book Online", None)])],
     )
@@ -2079,7 +2205,7 @@ def build_contact():
         "contact.html",
         f"Contact {B['legal_name']} | Cleaning Services {B['city']}",
         f"Contact Fast and Perfect Ltd. for cleaning in Edmonton and area. Call "
-        f"{PHONE}, email us, or send the form — we reply within one business hour.",
+        f"{PHONE}, email us, or send the form and we will get back to you.",
         body,
         schemas=[
             local_business_schema(),

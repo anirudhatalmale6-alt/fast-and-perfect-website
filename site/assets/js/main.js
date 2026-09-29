@@ -132,6 +132,20 @@
     return '$' + Math.round(n).toLocaleString('en-CA');
   };
 
+  /* Visible text of the checked radio in `name`, read from its own <label>
+     so the summary always matches what the customer actually sees. */
+  function labelOf(form, name) {
+    var input = form.querySelector('input[name="' + name + '"]:checked');
+    if (!input) return '—';
+    var lab = form.querySelector('label[for="' + input.id + '"]');
+    if (!lab) return input.value;
+    var clone = lab.cloneNode(true);
+    Array.prototype.forEach.call(clone.querySelectorAll('.tag'), function (t) {
+      t.remove();
+    });
+    return clone.textContent.trim().replace(/\s+/g, ' ');
+  }
+
   function readEstimator(form) {
     var service = (form.querySelector('input[name="service"]:checked') || {}).value || 'residential';
     var freq = (form.querySelector('input[name="frequency"]:checked') || {}).value || 'onetime';
@@ -173,8 +187,33 @@
     var breakEl = $('#est-breakdown');
     var subEl = $('#est-sub');
 
+    // While the owner's rates are unconfirmed the calculator collects the job
+    // details but publishes no dollar figure anywhere.
+    var pricesOff = estForm.getAttribute('data-prices') === 'off';
+
     var renderEstimate = function () {
       var state = readEstimator(estForm);
+
+      if (pricesOff) {
+        if (breakEl) {
+          var rows2 = [
+            ['Service', labelOf(estForm, 'service')],
+            ['Frequency', labelOf(estForm, 'frequency')],
+            ['Property', state.beds + ' bed · ' + state.baths + ' bath' +
+              (state.sqft ? ' · ' + state.sqft + ' sq ft' : '')]
+          ];
+          if (state.extras.length) {
+            rows2.push(['Add-ons', state.extras.map(function (k) {
+              return EXTRA_LABEL[k] || k;
+            }).join(', ')]);
+          }
+          breakEl.innerHTML = rows2.map(function (r) {
+            return '<li><span>' + r[0] + '</span><b>' + r[1] + '</b></li>';
+          }).join('');
+        }
+        return;
+      }
+
       var p = priceEstimate(state);
 
       if (priceEl) {
@@ -203,7 +242,7 @@
 
       // carry the estimate into the quote form if both are on the page
       var carry = $('#quote-estimate');
-      if (carry) carry.value = money(p.low) + '-' + money(p.high) + ' (' + p.freqLabel + ')';
+      if (carry) carry.value = money(p.low) + '–' + money(p.high) + ' (' + p.freqLabel + ')';
     };
 
     estForm.addEventListener('change', renderEstimate);
@@ -217,7 +256,6 @@
     if (jumpBtn) {
       jumpBtn.addEventListener('click', function () {
         var state = readEstimator(estForm);
-        var p = priceEstimate(state);
         var target = $('#quote-form');
         if (!target) return;
         var set = function (name, val) {
@@ -226,7 +264,10 @@
         };
         set('service_interest', state.service);
         set('frequency', state.freq);
-        set('estimate', money(p.low) + '-' + money(p.high) + ' ' + CONFIG.CURRENCY);
+        if (!pricesOff) {
+          var p = priceEstimate(state);
+          set('estimate', money(p.low) + '-' + money(p.high) + ' ' + CONFIG.CURRENCY);
+        }
         set('property', state.beds + ' bed / ' + state.baths + ' bath' +
           (state.sqft ? ' / ' + state.sqft + ' sq ft' : ''));
         if (state.extras.length) {
@@ -244,13 +285,9 @@
   if (bookForm) {
     var sumList = $('#booking-summary');
     var sumTotal = $('#booking-total');
+    var bookPricesOff = bookForm.getAttribute('data-prices') === 'off';
 
-    var labelFor = function (name) {
-      var input = bookForm.querySelector('input[name="' + name + '"]:checked');
-      if (!input) return null;
-      var lab = bookForm.querySelector('label[for="' + input.id + '"]');
-      return lab ? lab.textContent.trim().replace(/\s+/g, ' ') : input.value;
-    };
+    var labelFor = function (name) { return labelOf(bookForm, name); };
 
     var renderBooking = function () {
       var state = readEstimator(bookForm);
@@ -260,7 +297,7 @@
 
       var rows = [
         ['Service', labelFor('service') || '—'],
-        ['Frequency', p.freqLabel],
+        ['Frequency', bookPricesOff ? labelFor('frequency') : p.freqLabel],
         ['Property', state.beds + ' bed · ' + state.baths + ' bath' + (state.sqft ? ' · ' + state.sqft + ' sq ft' : '')]
       ];
       if (state.extras.length) {
@@ -279,11 +316,13 @@
           return '<li><span>' + r[0] + '</span><b>' + r[1] + '</b></li>';
         }).join('');
       }
-      if (sumTotal) {
-        sumTotal.innerHTML = money(p.low) + '&ndash;' + money(p.high);
+      if (sumTotal && !bookPricesOff) {
+        sumTotal.innerHTML = money(p.low) + '&thinsp;&ndash;&thinsp;' + money(p.high);
       }
       var hidden = bookForm.querySelector('[name="estimate"]');
-      if (hidden) hidden.value = money(p.low) + '-' + money(p.high) + ' ' + CONFIG.CURRENCY;
+      if (hidden && !bookPricesOff) {
+        hidden.value = money(p.low) + '–' + money(p.high) + ' ' + CONFIG.CURRENCY;
+      }
     };
 
     bookForm.addEventListener('change', renderBooking);
@@ -399,7 +438,7 @@
       if (!CONFIG.FORM_ENDPOINT) {
         // Demo mode — nothing is transmitted.
         setTimeout(function () {
-          done(true, 'Thanks! Your request has been received — we\'ll call you back within one business hour. (Demo mode: connect your form endpoint in assets/js/main.js to start receiving these.)');
+          done(true, 'Thanks! Your request has been received — we\'ll be in touch shortly. (Demo mode: connect your form endpoint in assets/js/main.js to start receiving these.)');
         }, 700);
         return;
       }
@@ -412,7 +451,7 @@
       })
         .then(function (res) {
           if (!res.ok) throw new Error('HTTP ' + res.status);
-          done(true, 'Thanks! Your request has been received — we\'ll call you back within one business hour.');
+          done(true, 'Thanks! Your request has been received — we\'ll be in touch shortly.');
         })
         .catch(function () {
           done(false, 'Sorry, something went wrong sending that. Please call us directly and we\'ll take care of it.');

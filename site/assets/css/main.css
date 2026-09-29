@@ -125,6 +125,13 @@ body::before {
 
 img, svg, video { max-width: 100%; height: auto; display: block; }
 
+/* …but an icon sitting inside a run of text must stay on the same line.
+   The reset above would otherwise push it onto its own row. */
+h1 svg, h2 svg, h3 svg, h4 svg, p svg, label svg, summary svg, td svg, li > svg {
+  display: inline-block;
+  vertical-align: -0.12em;
+}
+
 h1, h2, h3, h4 {
   font-family: var(--display);
   font-weight: 600;
