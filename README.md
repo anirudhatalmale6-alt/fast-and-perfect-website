@@ -69,7 +69,7 @@ advertising policy and are grounds for a listing suspension.
 | `commercial-cleaning.html` | Commercial service + sectors + onboarding |
 | `carpet-cleaning.html` | Carpet & upholstery + method + estimate calculator + rate table |
 | `admin-pricing.html` | **Private** price editor (noindex, robots-disallowed) |
-| `quote.html` | Quote builder + free quote form |
+| `quote.html` | Smart calculator + free quote form |
 | `book.html` | Online booking — service, date, arrival window, live summary |
 | `gallery.html` | Before/after sliders + job grid |
 | `service-areas.html` | Edmonton (primary) + 19 secondary communities (local SEO) |
@@ -84,10 +84,20 @@ Plus `sitemap.xml` and `robots.txt`.
 
 ## Features
 
-- **Quote builder** — service, bedrooms, bathrooms, square footage, frequency
-  and add-ons, summarised live and carried into the quote form. The pricing
-  engine is written and tested but stays switched off until `CLAIMS`
-  `show_prices` is enabled with the owner's confirmed rates.
+- **One smart quote calculator** for every service. The customer ticks the
+  services they need (several at once is fine) and only the relevant
+  questions appear:
+  - *Regular / deep / move-in-out* → bedrooms, bathrooms, sq ft, frequency, add-ons
+  - *Commercial* → property type, sq ft, frequency, washrooms, access notes
+  - *Carpet* → carpeted rooms, hallways, stairs by step
+  - *Upholstery* → chairs, recliners, loveseats, sofas, sectionals, ottomans, mattresses
+  - *Treatments* (heavy stain, pet odour) shown once when carpet or upholstery is picked
+
+  Carpet and upholstery produce a live estimate from `pricing.json`. Services
+  without confirmed prices are listed as "quoted separately" rather than
+  guessed at. Selections survive navigation to the quote form via
+  sessionStorage, and fields in hidden panels are disabled so they can never
+  leak into a submission.
 - **Online booking** with date, arrival window and a live-updating summary card.
 - **Before/after sliders** — drag, touch or arrow-key driven.
 - **Click-to-call** everywhere, plus a sticky call bar on mobile.
@@ -202,7 +212,11 @@ site/                    ← the website (this is what gets uploaded)
   *.html
   sitemap.xml, robots.txt
   assets/css/main.css
+  assets/js/pricing-engine.js     ← pure pricing maths (unit-tested)
+  assets/js/quote-calculator.js   ← the smart calculator UI
+  assets/js/admin-pricing.js      ← the price editor
   assets/js/main.js
+  assets/data/pricing.json        ← every carpet/upholstery price
   assets/fonts/          ← Fraunces + Karla, self-hosted (SIL Open Font License)
   assets/img/            ← SVG artwork
 tools/

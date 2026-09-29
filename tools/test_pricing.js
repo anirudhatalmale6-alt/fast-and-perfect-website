@@ -9,7 +9,7 @@ const P = JSON.parse(fs.readFileSync(
 
 // load the calculator the same way a browser would
 global.window = global;
-require(path.join(ROOT, 'site/assets/js/carpet-calculator.js'));
+require(path.join(ROOT, 'site/assets/js/pricing-engine.js'));
 const { estimate, formatRange } = global.FPCarpet;
 
 let pass = 0, fail = 0;

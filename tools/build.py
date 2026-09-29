@@ -475,6 +475,8 @@ def page(slug, title, description, body, schemas=None, current=None, keywords=No
 {body}
 </main>
 {footer()}
+<script src="assets/js/pricing-engine.js" defer></script>
+<script src="assets/js/quote-calculator.js" defer></script>
 <script src="assets/js/main.js" defer></script>{extra}
 </body>
 </html>
@@ -585,130 +587,6 @@ def trust_strip():
     return f'<ul class="trust-row">{lis}</ul>'
 
 
-def estimator_block(form_id="estimator-form", with_cta=True):
-    services = [
-        ("residential", "Regular house clean", ""),
-        ("deep", "Deep clean", ""),
-        ("moveinout", "Move in / move out", ""),
-        ("carpet", "Carpet cleaning", ""),
-        ("commercial", "Commercial / office", ""),
-    ]
-    svc = "".join(
-        f'<input type="radio" name="service" id="svc-{v}" value="{v}"'
-        f'{" checked" if i == 0 else ""}><label for="svc-{v}">{l}{t}</label>'
-        for i, (v, l, t) in enumerate(services)
-    )
-    freqs = [
-        ("onetime", "One-time", ""),
-        ("monthly", "Monthly", DISCOUNT_TAG[0]),
-        ("biweekly", "Every 2 weeks", DISCOUNT_TAG[1]),
-        ("weekly", "Weekly", DISCOUNT_TAG[2]),
-    ]
-    frq = "".join(
-        f'<input type="radio" name="frequency" id="frq-{v}" value="{v}"'
-        f'{" checked" if i == 0 else ""}><label for="frq-{v}">{l}{t}</label>'
-        for i, (v, l, t) in enumerate(freqs)
-    )
-    extras = [
-        ("fridge", "Inside fridge", 35), ("oven", "Inside oven", 35),
-        ("windows", "Interior windows", 55), ("laundry", "Laundry", 25),
-        ("garage", "Garage", 45), ("basement", "Finished basement", 40),
-    ]
-    ext = "".join(
-        f'<input type="checkbox" name="extras" id="ex-{v}" value="{v}">'
-        f'<label for="ex-{v}">{l}'
-        + (f' <span class="tag">+${p}</span>' if claim("show_prices") else "")
-        + "</label>"
-        for v, l, p in extras
-    )
-    cta = (
-        f'<button class="btn btn--gold btn--block" type="button" id="est-continue">'
-        f"Send me this quote {icon('arrow', 16)}</button>"
-        if with_cta else
-        f'<a class="btn btn--gold btn--block" href="quote.html">Send me this quote {icon("arrow", 16)}</a>'
-    )
-
-    # Until the owner confirms his rates, the calculator collects the job
-    # details but publishes no dollar figure.
-    if claim("show_prices"):
-        result_body = f"""
-    <span class="est-result__label">Your estimated price</span>
-    <div class="est-price" id="est-price">$0</div>
-    <p class="est-sub" id="est-sub"></p>
-    <ul class="est-break" id="est-breakdown"></ul>
-    {cta}
-    <p class="est-foot">Instant estimate only. We confirm the final price in writing
-    before any work starts.</p>"""
-    else:
-        result_body = f"""
-    <span class="est-result__label">Your quote</span>
-    <div class="est-price" id="est-price-static">Priced<small>per job</small></div>
-    <p class="est-sub">Every space is different, so we price yours properly rather
-    than guessing. Send these details through and we'll come back with a written
-    quote.</p>
-    <ul class="est-break" id="est-breakdown"></ul>
-    {cta}
-    <p class="est-foot">No obligation, and no charge for the quote.</p>"""
-
-    prices_attr = "" if claim("show_prices") else ' data-prices="off"'
-    # Carpet & upholstery has its own calculator with confirmed prices, so
-    # point people at it rather than pricing carpets by bedroom count here.
-    carpet_hint = (
-        f"""
-    <div class="form-note mt-2" id="carpet-redirect" hidden>{icon('sparkle', 17)}
-      <span>Carpets and upholstery have their own calculator, priced by room,
-      staircase and furniture item — with live estimates.
-      <a href="carpet-cleaning.html#calculator"><b>Open the carpet &amp;
-      upholstery calculator</b></a>.</span></div>"""
-        if claim("show_prices_carpet") else ""
-    )
-    return f"""
-<div class="estimator">
-  <form class="est-panel" id="{form_id}"{prices_attr} novalidate>
-    <div class="field field--full">
-      <span class="field-label">What do you need cleaned?</span>
-      <div class="choice">{svc}</div>{carpet_hint}
-    </div>
-    <div class="field-grid mt-2">
-      <div class="field">
-        <span class="field-label">Bedrooms</span>
-        <div class="stepper" data-stepper data-min="0" data-max="10">
-          <button type="button" data-step="down" aria-label="Fewer bedrooms">&minus;</button>
-          <output>3</output>
-          <input type="hidden" name="bedrooms" value="3">
-          <button type="button" data-step="up" aria-label="More bedrooms">+</button>
-        </div>
-      </div>
-      <div class="field">
-        <span class="field-label">Bathrooms</span>
-        <div class="stepper" data-stepper data-min="0" data-max="10">
-          <button type="button" data-step="down" aria-label="Fewer bathrooms">&minus;</button>
-          <output>2</output>
-          <input type="hidden" name="bathrooms" value="2">
-          <button type="button" data-step="up" aria-label="More bathrooms">+</button>
-        </div>
-      </div>
-      <div class="field field--full">
-        <label for="sqft-{form_id}">Approximate size (sq ft) <span class="field-hint">— optional</span></label>
-        <input type="number" id="sqft-{form_id}" name="sqft" min="0" max="20000" step="50" placeholder="e.g. 1600" inputmode="numeric">
-      </div>
-    </div>
-    <div class="field field--full mt-2">
-      <span class="field-label">How often?</span>
-      <div class="choice">{frq}</div>
-    </div>
-    <div class="field field--full mt-2">
-      <span class="field-label">Add-ons</span>
-      <div class="choice">{ext}</div>
-    </div>
-  </form>
-
-  <aside class="est-result">{result_body}
-  </aside>
-</div>
-"""
-
-
 def quote_form(form_id="quote-form", heading=True):
     head = (
         '<span class="eyebrow">Request a quote</span>'
@@ -760,10 +638,8 @@ def quote_form(form_id="quote-form", heading=True):
       <label for="q-msg">Anything we should know?</label>
       <textarea id="q-msg" name="message" placeholder="3 bed / 2 bath bungalow, two cats, need the oven done too…"></textarea>
     </div>
+    <input type="hidden" name="quote_details" id="quote-detail-field" value="">
     <input type="hidden" name="estimate" id="quote-estimate" value="">
-    <input type="hidden" name="frequency" value="">
-    <input type="hidden" name="property" value="">
-    <input type="hidden" name="extras" value="">
     <input type="hidden" name="_subject" value="New quote request — fastandperfect.ca">
     <div class="hp" aria-hidden="true">
       <label for="q-gotcha">Leave this blank</label>
@@ -868,70 +744,224 @@ def qty_row(key, label, price_key, min_v=0, max_v=30):
 </div>"""
 
 
-def carpet_calculator():
-    """Carpet & upholstery estimate calculator.
+def quote_calculator(preselect=("residential",)):
+    """ONE calculator for every service.
 
-    Deliberately has no bedrooms/bathrooms — it is built around what is
-    actually cleaned: carpeted rooms, hallways, stairs, fabric furniture
-    and mattresses.
+    The customer ticks the services they need and only the relevant questions
+    appear. Several can be combined — carpet + upholstery build a single
+    priced quote; residential/commercial ride along as "quoted separately"
+    until their prices are confirmed.
     """
-    if not claim("show_prices_carpet"):
-        return ""
-
     p = PRICING
+    services = [
+        ("residential", "Regular house cleaning"),
+        ("deep", "Deep cleaning"),
+        ("moveinout", "Move in / move out"),
+        ("commercial", "Commercial / office"),
+        ("carpet", "Carpet cleaning"),
+        ("upholstery", "Upholstery cleaning"),
+    ]
+    svc = "".join(
+        f'<input type="checkbox" name="service" id="svc-{v}" value="{v}"'
+        f'{" checked" if v in preselect else ""}>'
+        f'<label for="svc-{v}">{l}</label>'
+        for v, l in services
+    )
+
+    # ---- house-cleaning panel -------------------------------------------
+    extras = [
+        ("fridge", "Inside fridge", 35), ("oven", "Inside oven", 35),
+        ("windows", "Interior windows", 55), ("laundry", "Laundry", 25),
+        ("garage", "Garage", 45), ("basement", "Finished basement", 40),
+    ]
+    ext = "".join(
+        f'<input type="checkbox" name="extras" id="ex-{v}" value="{v}">'
+        f'<label for="ex-{v}">{l}'
+        + (f' <span class="tag">+${pr}</span>' if claim("show_prices") else "")
+        + "</label>"
+        for v, l, pr in extras
+    )
+    freqs = [("onetime", "One-time", ""), ("monthly", "Monthly", DISCOUNT_TAG[0]),
+             ("biweekly", "Every 2 weeks", DISCOUNT_TAG[1]),
+             ("weekly", "Weekly", DISCOUNT_TAG[2])]
+    frq = "".join(
+        f'<input type="radio" name="frequency" id="frq-{v}" value="{v}"'
+        f'{" checked" if i == 0 else ""}><label for="frq-{v}">{l}{t}</label>'
+        for i, (v, l, t) in enumerate(freqs)
+    )
+
+    home_panel = f"""
+<div data-panel="home" hidden>
+  <span class="eyebrow mt-3">Your home</span>
+  <div class="field-grid mt-1">
+    <div class="field">
+      <span class="field-label">Bedrooms</span>
+      <div class="stepper" data-qty="__beds" data-min="0" data-max="10">
+        <button type="button" data-step="down" aria-label="Fewer bedrooms">&minus;</button>
+        <output>3</output><input type="hidden" value="3">
+        <button type="button" data-step="up" aria-label="More bedrooms">+</button>
+      </div>
+    </div>
+    <div class="field">
+      <span class="field-label">Bathrooms</span>
+      <div class="stepper" data-qty="__baths" data-min="0" data-max="10">
+        <button type="button" data-step="down" aria-label="Fewer bathrooms">&minus;</button>
+        <output>2</output><input type="hidden" value="2">
+        <button type="button" data-step="up" aria-label="More bathrooms">+</button>
+      </div>
+    </div>
+    <div class="field field--full">
+      <label for="q-sqft">Approximate size (sq ft) <span class="field-hint">— optional</span></label>
+      <input type="number" id="q-sqft" name="sqft" min="0" max="20000" step="50"
+             placeholder="e.g. 1600" inputmode="numeric">
+    </div>
+  </div>
+  <span class="eyebrow mt-3">How often</span>
+  <div class="choice mt-1">{frq}</div>
+  <span class="eyebrow mt-3">Add-ons</span>
+  <div class="choice mt-1">{ext}</div>
+</div>"""
+
+    # ---- commercial panel ------------------------------------------------
+    prop_types = ["Office", "Medical or dental clinic", "Retail store",
+                  "Salon or spa", "Restaurant or café", "Warehouse or shop",
+                  "Gym or studio", "Common areas / property management",
+                  "Other"]
+    prop_opts = "".join(f"<option>{t}</option>" for t in prop_types)
+    comm_freqs = ["One-time", "Nightly", "2–3 times a week", "Weekly",
+                  "Every 2 weeks", "Monthly"]
+    comm_freq_opts = "".join(f"<option>{t}</option>" for t in comm_freqs)
+    commercial_panel = f"""
+<div data-panel="commercial" hidden>
+  <span class="eyebrow mt-3">Your premises</span>
+  <div class="field-grid mt-1">
+    <div class="field">
+      <label for="q-comm-type">Type of property</label>
+      <select id="q-comm-type" name="comm_type">{prop_opts}</select>
+    </div>
+    <div class="field">
+      <label for="q-comm-sqft">Approximate size (sq ft)</label>
+      <input type="number" id="q-comm-sqft" name="comm_sqft" min="0" max="500000"
+             step="100" placeholder="e.g. 4000" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label for="q-comm-freq">Cleaning frequency</label>
+      <select id="q-comm-freq" name="comm_frequency">{comm_freq_opts}</select>
+    </div>
+    <div class="field">
+      <label for="q-comm-rooms">Washrooms on site</label>
+      <input type="number" id="q-comm-rooms" name="comm_washrooms" min="0" max="100"
+             placeholder="e.g. 2" inputmode="numeric">
+    </div>
+    <div class="field field--full">
+      <label for="q-comm-notes">Anything else we should know?</label>
+      <textarea id="q-comm-notes" name="comm_notes"
+        placeholder="Access hours, alarm, loading bay, areas to avoid…"></textarea>
+    </div>
+  </div>
+  <div class="form-note mt-2">{icon('clock', 17)}
+    <span>Commercial work is priced after a short site walkthrough, so we quote
+    the actual job rather than guessing from a form.</span></div>
+</div>"""
+
+    # ---- carpet panel ----------------------------------------------------
+    carpet_rows = f"""
+<div class="qty" data-qty="__rooms" data-min="0" data-max="20">
+  <span class="qty__label">Carpeted rooms
+    <span class="qty__price" data-price-for="__rooms"></span></span>
+  <span class="stepper stepper--sm">
+    <button type="button" data-step="down" aria-label="Fewer carpeted rooms">&minus;</button>
+    <output>0</output><input type="hidden" value="0">
+    <button type="button" data-step="up" aria-label="More carpeted rooms">+</button>
+  </span>
+</div>""" + qty_row("__hallways", "Hallways", "__hallways", 0, 10) \
+         + qty_row("__steps", "Stairs — number of steps", "__steps", 0, 60)
+
+    carpet_panel = f"""
+<div data-panel="carpet" hidden>
+  <span class="eyebrow mt-3">Carpet cleaning</span>
+  <div class="qty-group">{carpet_rows}</div>
+  <div class="form-note mt-2">{icon('pin', 17)}
+    <span data-pricing-note="max_room">{p['max_room_note']}</span></div>
+</div>"""
+
+    # ---- upholstery panel ------------------------------------------------
     uph = [i for i in p["items"] if i["group"] == "Upholstery"]
     mat = [i for i in p["items"] if i["group"] == "Mattresses"]
+    uph_panel = f"""
+<div data-panel="upholstery" hidden>
+  <span class="eyebrow mt-3">Upholstery</span>
+  <div class="qty-group">
+    {"".join(qty_row(i["key"], i["label"], i["key"], 0, 15) for i in uph)}
+  </div>
+  <span class="eyebrow mt-3">Mattresses</span>
+  <div class="qty-group">
+    {"".join(qty_row(i["key"], i["label"], i["key"], 0, 15) for i in mat)}
+  </div>
+</div>"""
 
-    carpet_rows = (
-        qty_row("__rooms", "Carpeted rooms", "__rooms_price", 0, 20)
-        .replace('<span class="qty__price" data-price-for="__rooms_price"></span>',
-                 f'<span class="qty__price">up to {p["max_room_sqft"]} sq ft each</span>')
-        + qty_row("__hallways", "Hallways", "__hallways", 0, 10)
-        + qty_row("__steps", "Stairs — number of steps", "__steps", 0, 60)
-    )
-    uph_rows = "".join(qty_row(i["key"], i["label"], i["key"], 0, 15) for i in uph)
-    mat_rows = "".join(qty_row(i["key"], i["label"], i["key"], 0, 15) for i in mat)
+    # ---- treatments (shared by carpet + upholstery) ----------------------
     treat_rows = "".join(
         f'<label class="treat"><input type="checkbox" name="treatment" value="{t["key"]}">'
         f'<span>{t["label"]}<span class="qty__price" data-price-for="{t["key"]}"></span></span>'
         f"</label>"
         for t in p["treatments"]
     )
+    treat_panel = f"""
+<div data-panel="treatments" hidden>
+  <span class="eyebrow mt-3">Additional treatments</span>
+  <div class="treat-group">{treat_rows}</div>
+</div>"""
 
-    # A copy of the pricing travels with the page so the calculator still
-    # works if the JSON file cannot be fetched for any reason.
     inline = json.dumps(p, ensure_ascii=False)
+    general = "on" if claim("show_prices") else "off"
 
     return f"""
-<div class="estimator" id="carpet-calculator">
+<div class="estimator" id="quote-calculator" data-prices-general="{general}">
   <script type="application/json" id="fp-pricing-inline">{inline}</script>
   <form class="est-panel" novalidate>
-    <span class="eyebrow">Carpet cleaning</span>
-    <div class="qty-group">{carpet_rows}</div>
-
-    <span class="eyebrow mt-3">Upholstery</span>
-    <div class="qty-group">{uph_rows}</div>
-
-    <span class="eyebrow mt-3">Mattresses</span>
-    <div class="qty-group">{mat_rows}</div>
-
-    <span class="eyebrow mt-3">Additional treatments</span>
-    <div class="treat-group">{treat_rows}</div>
-
-    <div class="form-note mt-2">{icon('pin', 17)}
-      <span data-pricing-note="max_room">{p['max_room_note']}</span></div>
+    <div class="field field--full">
+      <span class="field-label">What do you need cleaned?
+        <span class="field-hint" style="text-transform:none;letter-spacing:0">
+          — choose as many as you need</span></span>
+      <div class="choice choice--multi">{svc}</div>
+    </div>
+    {home_panel}{commercial_panel}{carpet_panel}{uph_panel}{treat_panel}
   </form>
 
   <aside class="est-result">
-    <span class="est-result__label">Estimated price</span>
-    <div class="est-price" id="carpet-price">&mdash;<small>Select what needs cleaning</small></div>
-    <p class="est-sub" id="carpet-min-note"></p>
-    <ul class="est-break" id="carpet-lines"></ul>
-    <a class="btn btn--gold btn--block" href="quote.html">
-      Request this quote {icon('arrow', 16)}</a>
+    <span class="est-result__label">Your estimate</span>
+    <div class="est-price" id="quote-price">&mdash;<small>Choose a service to start</small></div>
+    <p class="est-sub" id="quote-note"></p>
+    <ul class="est-break" id="quote-services"></ul>
+    <ul class="est-break" id="quote-lines"></ul>
+    <a class="btn btn--gold btn--block" href="quote.html#quote-form" id="quote-cta">
+      Send me this quote {icon('arrow', 16)}</a>
     <p class="est-foot" data-pricing-note="disclaimer">{p['disclaimer']}</p>
   </aside>
 </div>
+"""
+
+
+def calculator_section(preselect=("residential",), eyebrow="Free quote",
+                       title='Build your <span class="tilt">quote</span>.',
+                       lede=None, bg=""):
+    lede = lede or (
+        "Pick the services you need and the questions change to match. "
+        "Carpet and upholstery show a live estimate; everything else comes back "
+        "as a written quote."
+    )
+    return f"""
+<section class="section{bg}" id="calculator">
+  <div class="shell">
+    <div class="section-head section-head--center">
+      <span class="eyebrow eyebrow--center">{eyebrow}</span>
+      <h2 class="h-lg">{title}</h2>
+      <p class="lede">{lede}</p>
+    </div>
+    {quote_calculator(preselect)}
+  </div>
+</section>
 """
 
 
@@ -1141,17 +1171,12 @@ def build_home():
   </div>
 </section>
 
-<section class="section" id="estimate">
-  <div class="shell">
-    <div class="section-head section-head--center">
-      <span class="eyebrow eyebrow--center">Free quote</span>
-      <h2 class="h-lg">Tell us what you <span class="tilt">need</span>.</h2>
-      <p class="lede">Set the details below and send them through. We'll come back with a
-      written price — no walkthrough needed for most homes, and no obligation.</p>
-    </div>
-    {estimator_block()}
-  </div>
-</section>
+{calculator_section(
+    ("residential",),
+    title='One calculator, <span class="tilt">every</span> service.',
+    lede="Tick what you need — house cleaning, commercial, carpet, upholstery, or "
+         "several at once. The questions change to match, so you only answer what "
+         "is relevant to you.")}
 
 <section class="section bg-paper">
   <div class="shell">
@@ -1394,15 +1419,10 @@ def build_residential():
                     "quote is the price you pay.",
                     "Prices in CAD, GST-exclusive.")}
 
-<section class="section bg-sage">
-  <div class="shell">
-    <div class="section-head section-head--center">
-      <span class="eyebrow eyebrow--center">Free quote</span>
-      <h2 class="h-lg">Price your home.</h2>
-    </div>
-    {estimator_block("estimator-form", with_cta=False)}
-  </div>
-</section>
+{calculator_section(
+    ("residential",), title="Price your home.",
+    lede="Add carpet or upholstery cleaning to the same quote if you need it.",
+    bg=" bg-sage")}
 
 {reviews_section(3, 0, heading="From homes like yours.")}
 
@@ -1549,6 +1569,13 @@ def build_commercial():
 
 {reviews_section(3, 3, heading="From local businesses.")}
 
+{calculator_section(
+    ("commercial",), eyebrow="Free quote",
+    title='Tell us about your <span class="tilt">premises</span>.',
+    lede="Property type, size and how often you need us. Add carpet or upholstery "
+         "to the same quote if your site needs it.",
+    bg=" bg-paper")}
+
 {faq_block(faqs, "Commercial cleaning questions")}
 {cta_band(
     'Get a <span class="tilt--gold">site-specific</span> quote.',
@@ -1668,17 +1695,11 @@ def build_carpet():
   </div>
 </section>
 
-<section class="section" id="calculator">
-  <div class="shell">
-    <div class="section-head section-head--center">
-      <span class="eyebrow eyebrow--center">Estimate calculator</span>
-      <h2 class="h-lg">Price your <span class="tilt">carpets</span> and furniture.</h2>
-      <p class="lede">Choose what needs cleaning and see an estimate straight away.
-      No bedrooms or bathrooms here — just what actually gets cleaned.</p>
-    </div>
-    {carpet_calculator()}
-  </div>
-</section>
+{calculator_section(
+    ("carpet", "upholstery"), eyebrow="Estimate calculator",
+    title='Price your <span class="tilt">carpets</span> and furniture.',
+    lede="Carpet and upholstery are both ticked — untick either one, or add a house "
+         "clean, and the questions change to match.")}
 
 {carpet_rate_table()}
 
@@ -1715,8 +1736,7 @@ def build_carpet():
         "Traffic lanes, pet odours and stains, plus sofas, mattresses and area "
         "rugs. Free written quote.",
         body,
-        extra_js=["assets/js/carpet-calculator.js"],
-        schemas=[
+                schemas=[
             service_schema(
                 "Carpet and Upholstery Cleaning",
                 "Hot-water extraction carpet cleaning, upholstery and mattress "
@@ -2052,9 +2072,9 @@ def build_quote():
         "quote — no walkthrough needed for most homes, and no obligation.",
         [("Home", "index.html"), ("Free Quote", None)],
     ) + f"""
-<section class="section section--tight">
+<section class="section section--tight" id="calculator">
   <div class="shell">
-    {estimator_block()}
+    {quote_calculator(("residential",))}
   </div>
 </section>
 
@@ -2578,7 +2598,7 @@ def build_admin_pricing():
         body,
         schemas=[],
         noindex=True,
-        extra_js=["assets/js/carpet-calculator.js", "assets/js/admin-pricing.js"],
+        extra_js=["assets/js/admin-pricing.js"],
     )
 
 
