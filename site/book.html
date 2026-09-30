@@ -70,7 +70,7 @@
   <div class="shell">
     <div class="contact-grid">
       <form class="est-panel" id="booking-form" data-form novalidate
-            method="POST" action="https://formsubmit.co/info@fastandperfect.ca">
+            method="POST" action="/api/enquiry">
         <span class="eyebrow">Step 1 — the job</span>
         <div class="field field--full mt-1">
           <span class="field-label">Service</span>
@@ -151,9 +151,6 @@
           </div>
           <input type="hidden" name="estimate" value="">
           <input type="hidden" name="_subject" value="New booking request from fastandperfect.ca">
-          <input type="hidden" name="_template" value="table">
-          <input type="hidden" name="_captcha" value="false">
-          <input type="hidden" name="_next" value="https://fastandperfect.ca/thank-you.html">
           <div class="hp" aria-hidden="true">
             <label for="b-gotcha">Leave this blank</label>
             <input type="text" id="b-gotcha" name="_gotcha" tabindex="-1" autocomplete="off">

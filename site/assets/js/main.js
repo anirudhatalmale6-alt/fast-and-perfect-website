@@ -250,40 +250,76 @@
   }
 
   /* ================= Forms =================
-     The forms POST natively to the delivery endpoint rather than through
-     fetch(). A fetch is an XHR and is therefore subject to CORS: the
-     provider sits behind bot protection that answers without an
-     Access-Control-Allow-Origin header, so the browser refuses to read the
-     reply and the send fails even when the request is legitimate.
+     The forms post to /api/enquiry — the site's OWN endpoint, running as a
+     Cloudflare Pages Function on this same domain.
 
-     A plain form POST is a navigation, not an XHR. No CORS applies, it
-     works with JavaScript disabled, and if the provider ever does show a
-     challenge the visitor sees it and can complete it — instead of the
-     request failing silently behind the scenes.
+     They used to post straight to a third-party form service. That failed
+     twice over, and both failures were invisible to the visitor:
 
-     JS here only validates and guards spam; it never blocks the submit.
+       1. Posting by fetch() to another domain is an XHR, so CORS applies.
+          The service answered from behind bot protection without an
+          Access-Control-Allow-Origin header, so the browser refused to read
+          the reply and every send died.
+       2. Posting natively fixed CORS, but the service then started
+          returning HTTP 500 from its own servers — which navigated the
+          customer off fastandperfect.ca and onto a stranger's error page.
+
+     Posting to our own origin removes both. There is no CORS on a
+     same-origin request, so we can read the reply and say truthfully
+     whether it was delivered; and the visitor never leaves this site.
+
+     The form still carries a real method/action, so it works with
+     JavaScript switched off — the endpoint redirects to the thank-you page
+     in that case. The JS below is an enhancement, not a requirement.
      ========================================================================= */
+  /* A visitor with JavaScript off is redirected back here by the endpoint
+     when delivery failed. Without this they would land on a normal-looking
+     page with no idea their request never arrived. */
+  if (/[?&]send=failed/.test(window.location.search)) {
+    var firstForm = $('form[data-form]');
+    var st = firstForm && $('.form-status', firstForm);
+    if (st) {
+      st.className = 'form-status is-err';
+      st.style.display = 'block';
+      st.textContent = 'Sorry, that did not send. Please try again, use the ' +
+        '"email this to us instead" link just above the button, or call ' +
+        CONFIG.FALLBACK_PHONE + '.';
+      st.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
   $$('form[data-form]').forEach(function (form) {
     var status = $('.form-status', form);
     var submit = form.querySelector('[type="submit"]');
+    var label = submit ? submit.innerHTML : 'Send';
 
-    // Keep the "email it instead" escape hatch visible and always working.
+    // Keep the "email it instead" escape hatch visible and always current.
     var alt = $('[data-mailto-fallback]', form);
+    var refreshAlt = function () { if (alt) alt.href = mailtoFor(form); };
     if (alt) {
-      var refreshAlt = function () { alt.href = mailtoFor(form); };
       form.addEventListener('input', refreshAlt);
       form.addEventListener('change', refreshAlt);
       refreshAlt();
     }
 
+    var say = function (kind, text) {
+      if (!status) return;
+      status.className = 'form-status is-' + kind;
+      status.style.display = 'block';
+      status.textContent = text;
+    };
+
+    var reset = function () {
+      if (!submit) return;
+      submit.disabled = false;
+      submit.innerHTML = label;
+    };
+
     form.addEventListener('submit', function (e) {
       // bots fill hidden fields; people never see them
       var hp = form.querySelector('input[name="_gotcha"]');
       var hp2 = form.querySelector('input[name="_honey"]');
-      if ((hp && hp.value) || (hp2 && hp2.value)) {
-        e.preventDefault();
-        return;
-      }
+      if ((hp && hp.value) || (hp2 && hp2.value)) { e.preventDefault(); return; }
 
       if (!form.checkValidity()) {
         e.preventDefault();
@@ -291,23 +327,47 @@
         return;
       }
 
-      // Let the native POST proceed. Show progress; the browser navigates.
-      if (submit) {
-        submit.disabled = true;
-        submit.innerHTML = 'Sending…';
-        // If the navigation is blocked or slow, give the button back so the
-        // visitor is never stuck staring at a dead form.
-        setTimeout(function () {
-          submit.disabled = false;
-          submit.innerHTML = submit.getAttribute('data-label') || 'Send';
-          if (status) {
-            status.className = 'form-status is-err';
-            status.style.display = 'block';
-            status.textContent = 'Still sending. If nothing happens, use the ' +
-              '"email this instead" link below, or call ' + CONFIG.FALLBACK_PHONE + '.';
-          }
-        }, 12000);
-      }
+      // fetch() is not available on very old browsers. Rather than block the
+      // customer, let the native POST through — the endpoint handles it.
+      if (!window.fetch) return;
+
+      e.preventDefault();
+      if (submit) { submit.disabled = true; submit.innerHTML = 'Sending…'; }
+      say('', 'Sending your request…');
+
+      var failed = function (msg) {
+        reset();
+        refreshAlt();
+        say('err', msg || 'That did not send. Please use the "email this to ' +
+          'us instead" link just above the button, or call ' + CONFIG.FALLBACK_PHONE +
+          '. We do not want to lose your request.');
+      };
+
+      fetch(form.getAttribute('action'), {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        body: new FormData(form)
+      }).then(function (res) {
+        return res.json().catch(function () { return { ok: false }; })
+          .then(function (body) { return { res: res, body: body }; });
+      }).then(function (r) {
+        /* Only ever confirm what the server actually confirmed. A response
+           arriving is not the same thing as an email being delivered. */
+        if (r.res.ok && r.body && r.body.ok === true) {
+          form.reset();
+          refreshAlt();
+          reset();
+          say('ok', 'Thank you, your request has been sent. We will get ' +
+            'back to you shortly. If it is urgent, call ' +
+            CONFIG.FALLBACK_PHONE + '.');
+          var thanks = form.getAttribute('data-thanks');
+          if (thanks) window.location.href = thanks;
+        } else {
+          failed(r.body && r.body.message);
+        }
+      }).catch(function () {
+        failed();
+      });
     });
   });
 

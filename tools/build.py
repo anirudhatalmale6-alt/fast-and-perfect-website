@@ -124,7 +124,11 @@ TESTIMONIALS = []
 
 # Form submissions POST here. FormSubmit needs no account and no API key;
 # the first submission triggers a one-time activation email to this address.
-FORM_ACTION = "https://formsubmit.co/" + BUSINESS["email"]
+# The site's OWN endpoint — a Cloudflare Pages Function in functions/api/.
+# Same origin, so no CORS, and the customer can never be navigated onto a
+# third-party error page. Delivery provider is configured there, not here.
+# See functions/api/enquiry.js for the full reasoning.
+FORM_ACTION = "/api/enquiry"
 
 B = BUSINESS
 TEL = B["phone_href"]
@@ -688,9 +692,6 @@ def quote_form(form_id="quote-form", heading=True):
     <input type="hidden" name="quote_details" id="quote-detail-field" value="">
     <input type="hidden" name="estimate" id="quote-estimate" value="">
     <input type="hidden" name="_subject" value="New quote request from fastandperfect.ca">
-    <input type="hidden" name="_template" value="table">
-    <input type="hidden" name="_captcha" value="false">
-    <input type="hidden" name="_next" value="{B['domain']}/thank-you.html">
     <div class="hp" aria-hidden="true">
       <label for="q-gotcha">Leave this blank</label>
       <input type="text" id="q-gotcha" name="_gotcha" tabindex="-1" autocomplete="off">
@@ -2506,9 +2507,6 @@ def build_book():
           </div>
           <input type="hidden" name="estimate" value="">
           <input type="hidden" name="_subject" value="New booking request from fastandperfect.ca">
-          <input type="hidden" name="_template" value="table">
-          <input type="hidden" name="_captcha" value="false">
-          <input type="hidden" name="_next" value="{B['domain']}/thank-you.html">
           <div class="hp" aria-hidden="true">
             <label for="b-gotcha">Leave this blank</label>
             <input type="text" id="b-gotcha" name="_gotcha" tabindex="-1" autocomplete="off">
