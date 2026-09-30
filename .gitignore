@@ -18,3 +18,8 @@ IMG_*.HEIC
 # redaction proofs). These can contain the very data they are documenting.
 exposure-*
 *-annotated.*
+
+# Documents the client sends (address confirmations, agreements, invoices).
+# They belong in my private working copy, not in a public deliverable repo.
+*.pdf
+*.docx

@@ -21,6 +21,17 @@ PRICING = json.load(open(os.path.join(SITE, "assets/data/pricing.json"), encodin
 PHONE_DISPLAY = "(587) 338-0069"
 PHONE_HREF = "+15873380069"
 EMAIL = "info@fastandperfect.ca"
+# The owner's confirmed business address. A downtown office suite, never his
+# home — he asked from the outset that no residential address of his appear
+# anywhere public, so a wrong or half-updated address here is a privacy bug,
+# not a typo. Every page footer must carry this exact address and no other.
+STREET = "10060 Jasper Ave, Tower 1, Suite 2020"
+POSTAL = "T5J 3R8"
+# Any street-number-plus-street-name that is NOT ours.
+OTHER_STREET = re.compile(
+    r"\b\d{3,6}\s+(?!Jasper Ave, Tower 1, Suite 2020)"
+    r"[A-Z][A-Za-z.]*\s+(Ave|Avenue|St|Street|Rd|Road|Blvd|Way|Dr|Drive)\b")
+
 
 failures = []
 def fail(page, msg):
@@ -111,6 +122,14 @@ for page in pages:
             fail(page, "has a tel: link that is not the confirmed number")
         if re.search(r"mailto:", html) and EMAIL not in html:
             fail(page, "has a mailto: link that is not the confirmed address")
+
+        # Every page carries the footer, so every page carries the address.
+        if STREET not in html:
+            fail(page, "footer is missing the confirmed business address")
+        if POSTAL not in html:
+            fail(page, f"business address present without the postal code {POSTAL}")
+        for m2 in OTHER_STREET.finditer(visible_text(html)):
+            fail(page, f"a street address that is not the confirmed one: {m2.group(0)!r}")
 
 # ---------------------------------------------------------- 4. prices trace to pricing.json
 allowed = {0}

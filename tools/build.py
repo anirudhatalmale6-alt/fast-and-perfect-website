@@ -30,11 +30,15 @@ BUSINESS = {
     "phone_href": "+15873380069",
     "email": "info@fastandperfect.ca",
     "domain": "https://fastandperfect.ca",
+    # Confirmed by the owner in writing and in a signed address document.
+    # A downtown office suite, NOT his home — he asked from the start that no
+    # residential address of his ever appear publicly, and this satisfies it.
+    "street": "10060 Jasper Ave, Tower 1, Suite 2020",
+    "postal_code": "T5J 3R8",
     "city": "Edmonton",
     "region": "AB",
     "region_full": "Alberta",
     "country": "CA",
-    "postal_hint": "T5J",
     "lat": "53.5461",
     "lng": "-113.4938",
     "hours": [
@@ -159,6 +163,7 @@ def icon(name, size=18, stroke=2):
         "mail": '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
         "pin": '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
         "clock": '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+        "map": '<path d="m9 4 6 2 5-2v14l-5 2-6-2-5 2V6z"/><path d="M9 4v14M15 6v14"/>',
         "check": '<path d="M20 6 9 17l-5-5"/>',
         "shield": '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',
         "star": '<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" stroke="none"/>',
@@ -315,7 +320,8 @@ def footer():
         <div class="footer-contact">
           <a href="tel:{TEL}">{icon('phone', 15)} {PHONE}</a>
           <a href="mailto:{B['email']}">{icon('mail', 15)} {B['email']}</a>
-          <div>{icon('pin', 15)} Serving {B['city']}, {B['region']} &amp; area</div>
+          <div>{icon('pin', 15)} {B['street']}<br>{B['city']}, {B['region']} {B['postal_code']}</div>
+          <div>{icon('map', 15)} Serving {B['city']} &amp; 19 surrounding communities</div>
           <div>{icon('clock', 15)} Mon–Fri 8am–8pm · Sat 9am–6pm · Sun 10am–4pm</div>
         </div>
       </div>
@@ -368,6 +374,8 @@ def local_business_schema():
            if claim("show_prices") else {}),
         "address": {
             "@type": "PostalAddress",
+            "streetAddress": B["street"],
+            "postalCode": B["postal_code"],
             "addressLocality": B["city"],
             "addressRegion": B["region"],
             "addressCountry": B["country"],
@@ -2594,8 +2602,13 @@ def build_contact():
               <span><span class="k">Email</span>
               <span class="v"><a href="mailto:{B['email']}">{B['email']}</a></span></span></li>
             <li><span class="ico">{icon('pin', 18)}</span>
+              <span><span class="k">Office</span>
+              <span class="v">{B['legal_name']}<br>{B['street']}<br>{B['city']}, {B['region']} {B['postal_code']}
+              <span>Mail and enquiries. We clean at your place, so there is
+              nothing to visit — call or book and we come to you.</span></span></span></li>
+            <li><span class="ico">{icon('map', 18)}</span>
               <span><span class="k">Service area</span>
-              <span class="v">{B['city']}, {B['region']}<span>Plus 11 surrounding communities —
+              <span class="v">{B['city']}, {B['region']}<span>Plus 19 surrounding communities —
               <a href="service-areas.html">see the list</a></span></span></span></li>
           </ul>
         </div>
