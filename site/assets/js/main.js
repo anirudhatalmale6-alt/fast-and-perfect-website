@@ -9,14 +9,8 @@
      CONFIG — the only block you normally need to touch.
      ------------------------------------------------------------------ */
   var CONFIG = {
-    /* Where form submissions are delivered.
-       FormSubmit needs no account and no API key: the first submission sends
-       a one-click activation email to the address below, and everything after
-       that is delivered straight to the inbox.
-       To switch to Web3Forms instead, put their endpoint here and add the
-       access key as a hidden field named `access_key` in the forms. */
-    FORM_ENDPOINT: 'https://formsubmit.co/ajax/info@fastandperfect.ca',
-    /* Where to tell people to go if delivery ever fails. */
+    /* Delivery is configured on the <form action> itself (a native POST),
+       not here — see the comment above the form handler for why. */
     FALLBACK_EMAIL: 'info@fastandperfect.ca',
     FALLBACK_PHONE: '(587) 338-0069',
     CURRENCY: 'CAD'
@@ -255,92 +249,65 @@
       '&body=' + encodeURIComponent(lines.join('\n'));
   }
 
-  /* ================= Forms ================= */
+  /* ================= Forms =================
+     The forms POST natively to the delivery endpoint rather than through
+     fetch(). A fetch is an XHR and is therefore subject to CORS: the
+     provider sits behind bot protection that answers without an
+     Access-Control-Allow-Origin header, so the browser refuses to read the
+     reply and the send fails even when the request is legitimate.
+
+     A plain form POST is a navigation, not an XHR. No CORS applies, it
+     works with JavaScript disabled, and if the provider ever does show a
+     challenge the visitor sees it and can complete it — instead of the
+     request failing silently behind the scenes.
+
+     JS here only validates and guards spam; it never blocks the submit.
+     ========================================================================= */
   $$('form[data-form]').forEach(function (form) {
     var status = $('.form-status', form);
     var submit = form.querySelector('[type="submit"]');
 
-    var say = function (msg, ok) {
-      if (!status) return;
-      status.className = 'form-status ' + (ok ? 'is-ok' : 'is-err');
-      status.textContent = msg;
-      status.setAttribute('role', 'status');
-    };
+    // Keep the "email it instead" escape hatch visible and always working.
+    var alt = $('[data-mailto-fallback]', form);
+    if (alt) {
+      var refreshAlt = function () { alt.href = mailtoFor(form); };
+      form.addEventListener('input', refreshAlt);
+      form.addEventListener('change', refreshAlt);
+      refreshAlt();
+    }
 
     form.addEventListener('submit', function (e) {
-      e.preventDefault();
-
-      // honeypot — bots fill hidden fields, people never see them
+      // bots fill hidden fields; people never see them
       var hp = form.querySelector('input[name="_gotcha"]');
       var hp2 = form.querySelector('input[name="_honey"]');
-      if ((hp && hp.value) || (hp2 && hp2.value)) return;
+      if ((hp && hp.value) || (hp2 && hp2.value)) {
+        e.preventDefault();
+        return;
+      }
 
       if (!form.checkValidity()) {
+        e.preventDefault();
         form.reportValidity();
         return;
       }
 
-      var original = submit ? submit.innerHTML : '';
+      // Let the native POST proceed. Show progress; the browser navigates.
       if (submit) {
         submit.disabled = true;
         submit.innerHTML = 'Sending…';
+        // If the navigation is blocked or slow, give the button back so the
+        // visitor is never stuck staring at a dead form.
+        setTimeout(function () {
+          submit.disabled = false;
+          submit.innerHTML = submit.getAttribute('data-label') || 'Send';
+          if (status) {
+            status.className = 'form-status is-err';
+            status.style.display = 'block';
+            status.textContent = 'Still sending. If nothing happens, use the ' +
+              '"email this instead" link below, or call ' + CONFIG.FALLBACK_PHONE + '.';
+          }
+        }, 12000);
       }
-
-      var done = function (ok, msg, recoverHref) {
-        if (submit) { submit.disabled = false; submit.innerHTML = original; }
-        say(msg, ok);
-        if (recoverHref && status) {
-          var a = document.createElement('a');
-          a.className = 'btn btn--gold btn--block mt-2';
-          a.href = recoverHref;
-          a.textContent = 'Send this by email instead';
-          status.appendChild(a);
-        }
-        if (ok) {
-          form.reset();
-          $$('[data-stepper]').forEach(function (w) {
-            var o = $('output', w), h = $('input[type="hidden"]', w);
-            if (o && h) { h.value = h.defaultValue || '1'; o.textContent = h.value; }
-          });
-          form.dispatchEvent(new Event('change'));
-        }
-      };
-
-      /* With no endpoint configured the form must NOT pretend it worked.
-         Saying "received" while sending nothing loses real enquiries silently. */
-      if (!CONFIG.FORM_ENDPOINT) {
-        done(false, 'This form is not connected yet. Use the button below to ' +
-          'send it by email, or call ' + CONFIG.FALLBACK_PHONE + '.',
-          mailtoFor(form));
-        return;
-      }
-
-      var data = new FormData(form);
-      fetch(CONFIG.FORM_ENDPOINT, {
-        method: 'POST',
-        body: data,
-        headers: { Accept: 'application/json' }
-      })
-        .then(function (res) {
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          return res.json().catch(function () { return {}; });
-        })
-        .then(function (body) {
-          /* FormSubmit answers 200 with success:"false" while the address is
-             still unconfirmed, so a bare res.ok check would report a delivery
-             that never happened. */
-          var ok = body.success === undefined ||
-                   body.success === true || body.success === 'true';
-          if (!ok) throw new Error(body.message || 'not delivered');
-          done(true, 'Thanks! Your request has been received — we\'ll be in touch shortly.');
-        })
-        .catch(function () {
-          /* A failed POST must never lose the enquiry. Rebuild it as a
-             pre-filled email so one click still gets it to the business. */
-          done(false, 'That did not send from the website. Nothing is lost — ' +
-            'use the button below to send it by email, or call ' +
-            CONFIG.FALLBACK_PHONE + '.', mailtoFor(form));
-        });
     });
   });
 
