@@ -1,3 +1,15 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# Client-supplied originals and anything pasted into the project root.
+# These are phone photos of real homes and screenshots of the owner's own
+# accounts. They must never be committed — this repository is public.
+# Only the cropped web versions in site/assets/img/photos/ belong here.
+source-photos/
+IMG_*.jpg
+IMG_*.jpeg
+IMG_*.png
+IMG_*.HEIC
+[0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F]-*.jpg
+[0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F]-*.jpeg
