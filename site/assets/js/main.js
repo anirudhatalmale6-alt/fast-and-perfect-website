@@ -7,13 +7,18 @@
 
   /* ------------------------------------------------------------------
      CONFIG — the only block you normally need to touch.
-     FORM_ENDPOINT: paste the URL from your form provider (Web3Forms,
-     Formspree, Netlify Forms, etc). While it is empty the forms run in
-     demo mode: they validate and show the success screen, but nothing
-     is actually delivered.
      ------------------------------------------------------------------ */
   var CONFIG = {
-    FORM_ENDPOINT: '',
+    /* Where form submissions are delivered.
+       FormSubmit needs no account and no API key: the first submission sends
+       a one-click activation email to the address below, and everything after
+       that is delivered straight to the inbox.
+       To switch to Web3Forms instead, put their endpoint here and add the
+       access key as a hidden field named `access_key` in the forms. */
+    FORM_ENDPOINT: 'https://formsubmit.co/ajax/info@fastandperfect.ca',
+    /* Where to tell people to go if delivery ever fails. */
+    FALLBACK_EMAIL: 'info@fastandperfect.ca',
+    FALLBACK_PHONE: '(587) 338-0069',
     CURRENCY: 'CAD'
   };
 
@@ -229,6 +234,27 @@
     set(50);
   });
 
+  /* Builds a mailto: containing everything the customer typed, used as a
+     recovery path if the submission endpoint is unreachable. */
+  function mailtoFor(form) {
+    var skip = /^_|^consent$/;
+    var lines = [];
+    Array.prototype.forEach.call(form.elements, function (el) {
+      if (!el.name || skip.test(el.name) || el.disabled) return;
+      if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return;
+      var v = (el.value || '').trim();
+      if (!v) return;
+      var label = form.querySelector('label[for="' + el.id + '"]');
+      var key = label ? label.textContent.replace(/\*/g, '').trim() : el.name;
+      lines.push(key + ': ' + v);
+    });
+    var subjEl = form.querySelector('[name="_subject"]');
+    var subject = subjEl ? subjEl.value : 'Website enquiry';
+    return 'mailto:' + CONFIG.FALLBACK_EMAIL +
+      '?subject=' + encodeURIComponent(subject) +
+      '&body=' + encodeURIComponent(lines.join('\n'));
+  }
+
   /* ================= Forms ================= */
   $$('form[data-form]').forEach(function (form) {
     var status = $('.form-status', form);
@@ -246,7 +272,8 @@
 
       // honeypot — bots fill hidden fields, people never see them
       var hp = form.querySelector('input[name="_gotcha"]');
-      if (hp && hp.value) return;
+      var hp2 = form.querySelector('input[name="_honey"]');
+      if ((hp && hp.value) || (hp2 && hp2.value)) return;
 
       if (!form.checkValidity()) {
         form.reportValidity();
@@ -259,9 +286,16 @@
         submit.innerHTML = 'Sending…';
       }
 
-      var done = function (ok, msg) {
+      var done = function (ok, msg, recoverHref) {
         if (submit) { submit.disabled = false; submit.innerHTML = original; }
         say(msg, ok);
+        if (recoverHref && status) {
+          var a = document.createElement('a');
+          a.className = 'btn btn--gold btn--block mt-2';
+          a.href = recoverHref;
+          a.textContent = 'Send this by email instead';
+          status.appendChild(a);
+        }
         if (ok) {
           form.reset();
           $$('[data-stepper]').forEach(function (w) {
@@ -272,11 +306,12 @@
         }
       };
 
+      /* With no endpoint configured the form must NOT pretend it worked.
+         Saying "received" while sending nothing loses real enquiries silently. */
       if (!CONFIG.FORM_ENDPOINT) {
-        // Demo mode — nothing is transmitted.
-        setTimeout(function () {
-          done(true, 'Thanks! Your request has been received — we\'ll be in touch shortly. (Demo mode: connect your form endpoint in assets/js/main.js to start receiving these.)');
-        }, 700);
+        done(false, 'This form is not connected yet. Use the button below to ' +
+          'send it by email, or call ' + CONFIG.FALLBACK_PHONE + '.',
+          mailtoFor(form));
         return;
       }
 
@@ -288,10 +323,23 @@
       })
         .then(function (res) {
           if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json().catch(function () { return {}; });
+        })
+        .then(function (body) {
+          /* FormSubmit answers 200 with success:"false" while the address is
+             still unconfirmed, so a bare res.ok check would report a delivery
+             that never happened. */
+          var ok = body.success === undefined ||
+                   body.success === true || body.success === 'true';
+          if (!ok) throw new Error(body.message || 'not delivered');
           done(true, 'Thanks! Your request has been received — we\'ll be in touch shortly.');
         })
         .catch(function () {
-          done(false, 'Sorry, something went wrong sending that. Please call us directly and we\'ll take care of it.');
+          /* A failed POST must never lose the enquiry. Rebuild it as a
+             pre-filled email so one click still gets it to the business. */
+          done(false, 'That did not send from the website. Nothing is lost — ' +
+            'use the button below to send it by email, or call ' +
+            CONFIG.FALLBACK_PHONE + '.', mailtoFor(form));
         });
     });
   });

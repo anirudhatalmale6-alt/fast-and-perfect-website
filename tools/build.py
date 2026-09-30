@@ -163,6 +163,7 @@ def icon(name, size=18, stroke=2):
         "repeat": '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
         "chevrons": '<path d="m9 7-5 5 5 5"/><path d="m15 7 5 5-5 5"/>',
         "caret": '<path d="m6 9 6 6 6-6"/>',
+        "message": '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
         "facebook": '<path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>',
         "instagram": '<rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>',
         "tiktok": '<path d="M16 3v10.5a4.5 4.5 0 1 1-4-4.47"/><path d="M16 3c.4 2.6 2 4.2 5 4.5"/>',
@@ -322,7 +323,8 @@ def footer():
   </div>
 </footer>
 <div class="callbar">
-  <a href="tel:{TEL}">{icon('phone', 17)} Call Now</a>
+  <a href="tel:{TEL}">{icon('phone', 17)} Call</a>
+  <a href="sms:{TEL}">{icon('message', 17)} Text</a>
   <a href="quote.html">{icon('sparkle', 17)} Free Quote</a>
 </div>
 """
@@ -680,10 +682,13 @@ def quote_form(form_id="quote-form", heading=True):
     </div>
     <input type="hidden" name="quote_details" id="quote-detail-field" value="">
     <input type="hidden" name="estimate" id="quote-estimate" value="">
-    <input type="hidden" name="_subject" value="New quote request — fastandperfect.ca">
+    <input type="hidden" name="_subject" value="New quote request from fastandperfect.ca">
+    <input type="hidden" name="_template" value="table">
+    <input type="hidden" name="_captcha" value="false">
     <div class="hp" aria-hidden="true">
       <label for="q-gotcha">Leave this blank</label>
       <input type="text" id="q-gotcha" name="_gotcha" tabindex="-1" autocomplete="off">
+      <input type="text" name="_honey" tabindex="-1" autocomplete="off">
     </div>
     <div class="field field--full">
       <label class="consent">
@@ -1700,6 +1705,38 @@ def build_commercial():
   </div>
 </section>
 
+<section class="section section--tight">
+  <div class="shell shell--wide">
+    <div class="section-head">
+      <span class="eyebrow">Commercial work</span>
+      <h2 class="h-lg">What a commercial visit <span class="tilt">covers</span>.</h2>
+    </div>
+    <div class="gallery-grid">
+      <figure class="tile reveal">
+        <img src="assets/img/photos/office.jpg" alt="Office floor and workstation cleaning after hours"
+             loading="lazy" width="384" height="288">
+        <figcaption class="tile__cap">Offices and workstations</figcaption>
+      </figure>
+      <figure class="tile reveal" data-delay="60">
+        <img src="assets/img/photos/hallway.jpg" alt="Common area and corridor cleaning"
+             loading="lazy" width="384" height="288">
+        <figcaption class="tile__cap">Common areas and corridors</figcaption>
+      </figure>
+      <figure class="tile reveal" data-delay="120">
+        <img src="assets/img/photos/clinic.jpg" alt="Clinic treatment room cleaning"
+             loading="lazy" width="384" height="288">
+        <figcaption class="tile__cap">Clinics and treatment rooms</figcaption>
+      </figure>
+      <figure class="tile reveal" data-delay="180">
+        <img src="assets/img/photos/windows.jpg" alt="Interior glass and window cleaning"
+             loading="lazy" width="384" height="288">
+        <figcaption class="tile__cap">Interior glass and windows</figcaption>
+      </figure>
+    </div>
+    {photo_disclaimer()}
+  </div>
+</section>
+
 <section class="section band">
   <div class="shell">
     <div class="section-head">
@@ -2006,7 +2043,7 @@ def build_about():
     <div class="split">
       <div class="split__media reveal">
         <img src="assets/img/photos/equipment.jpg"
-             alt="Truck-portable hot-water extractor with hoses, wands and upholstery tools"
+             alt="Professional portable hot-water extractor with hoses, wands and upholstery tools"
              loading="lazy" width="653" height="490">
       </div>
       <div class="prose">
@@ -2018,9 +2055,11 @@ def build_about():
         booking experience.</p>
         <p class="mt-2">We serve residential and commercial clients and focus on
         delivering consistent, high-quality service every time.</p>
-        <p>Carpet and upholstery work is done with truck-portable hot-water
-        extraction equipment rather than a domestic machine — that is what lifts
-        soil out of the pile instead of moving it around.</p>
+        <p>Carpet and upholstery work is done with a professional portable
+        hot-water extractor rather than a domestic machine &mdash; that is what
+        lifts soil out of the pile instead of moving it around. A portable unit
+        also reaches apartments, upper floors and units a truck-mounted hose
+        cannot.</p>
         <p>Every job starts with a written quote and an agreed task list, so there is no
         ambiguity about what is included or what it costs.</p>
         <div class="form-note mt-2">{icon('sparkle', 17)}
@@ -2453,10 +2492,13 @@ def build_book():
             <textarea id="b-notes" name="notes" placeholder="Back door code is 1234, two friendly dogs, parking on the street…"></textarea>
           </div>
           <input type="hidden" name="estimate" value="">
-          <input type="hidden" name="_subject" value="New online booking — fastandperfect.ca">
+          <input type="hidden" name="_subject" value="New booking request from fastandperfect.ca">
+          <input type="hidden" name="_template" value="table">
+          <input type="hidden" name="_captcha" value="false">
           <div class="hp" aria-hidden="true">
             <label for="b-gotcha">Leave this blank</label>
             <input type="text" id="b-gotcha" name="_gotcha" tabindex="-1" autocomplete="off">
+            <input type="text" name="_honey" tabindex="-1" autocomplete="off">
           </div>
           <div class="field field--full">
             <label class="consent">
@@ -2528,6 +2570,9 @@ def build_contact():
             <li><span class="ico">{icon('phone', 18)}</span>
               <span><span class="k">Phone</span>
               <span class="v"><a href="tel:{TEL}">{PHONE}</a><span>Fastest way to reach us</span></span></span></li>
+            <li><span class="ico">{icon('message', 18)}</span>
+              <span><span class="k">Text</span>
+              <span class="v"><a href="sms:{TEL}">{PHONE}</a><span>Send photos of the job if it helps</span></span></span></li>
             <li><span class="ico">{icon('mail', 18)}</span>
               <span><span class="k">Email</span>
               <span class="v"><a href="mailto:{B['email']}">{B['email']}</a></span></span></li>
