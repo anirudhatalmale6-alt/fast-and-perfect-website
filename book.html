@@ -69,7 +69,8 @@
 <section class="section">
   <div class="shell">
     <div class="contact-grid">
-      <form class="est-panel" id="booking-form" data-form novalidate>
+      <form class="est-panel" id="booking-form" data-form novalidate
+            method="POST" action="https://formsubmit.co/info@fastandperfect.ca">
         <span class="eyebrow">Step 1 — the job</span>
         <div class="field field--full mt-1">
           <span class="field-label">Service</span>
@@ -152,6 +153,7 @@
           <input type="hidden" name="_subject" value="New booking request from fastandperfect.ca">
           <input type="hidden" name="_template" value="table">
           <input type="hidden" name="_captcha" value="false">
+          <input type="hidden" name="_next" value="https://fastandperfect.ca/thank-you.html">
           <div class="hp" aria-hidden="true">
             <label for="b-gotcha">Leave this blank</label>
             <input type="text" id="b-gotcha" name="_gotcha" tabindex="-1" autocomplete="off">
@@ -170,9 +172,14 @@
             you first — you can change or cancel free up to 24 hours before.</span></div>
           </div>
           <div class="field field--full">
-            <button class="btn btn--gold btn--lg btn--block" type="submit">
+            <button class="btn btn--gold btn--lg btn--block" type="submit"
+                    data-label="Request this booking">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Request this booking
             </button>
+            <p class="field-hint mt-1" style="text-align:center">
+              Or call (587) 338-0069, or
+              <a href="mailto:info@fastandperfect.ca" data-mailto-fallback>email this to us instead</a>.
+            </p>
           </div>
         </div>
         <div class="form-status" aria-live="polite"></div>
