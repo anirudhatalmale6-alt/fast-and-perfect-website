@@ -13,3 +13,8 @@ IMG_*.png
 IMG_*.HEIC
 [0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F]-*.jpg
 [0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F][0-9A-F]-*.jpeg
+
+# Anything built FROM a client attachment (annotated screenshots, crops,
+# redaction proofs). These can contain the very data they are documenting.
+exposure-*
+*-annotated.*
