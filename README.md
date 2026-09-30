@@ -24,7 +24,7 @@ These are stand-in values. Everything else is production-ready.
 | Reviews | **Removed** — none published | `tools/build.py` → `TESTIMONIALS` |
 | All pricing | **Live** — owner-confirmed | `site/assets/data/pricing.json` |
 | Insurance / bonding / guarantees | **Removed** — none published | `tools/build.py` → `CLAIMS` |
-| Form delivery | Demo mode | `site/assets/js/main.js` → `CONFIG.FORM_ENDPOINT` |
+| Form delivery | Native POST to FormSubmit | `tools/build.py` → `FORM_ACTION` |
 
 ### The claims gate
 
@@ -180,23 +180,33 @@ commercial band.
 
 ---
 
-## Connecting the forms
+## How the forms deliver
 
-The quote, contact and booking forms currently run in **demo mode**: they
-validate and show the success message, but nothing is delivered.
+The quote, contact and booking forms **POST natively** to FormSubmit
+(`tools/build.py` → `FORM_ACTION`), landing on `thank-you.html` via `_next`.
 
-To make them live, sign up with a form provider (Web3Forms and Formspree both
-have free tiers), then put the endpoint URL here:
+They deliberately do **not** use `fetch()`. A fetch is an XHR and is therefore
+subject to CORS. FormSubmit sits behind bot protection that answers without an
+`Access-Control-Allow-Origin` header, so the browser refuses to read the reply
+and the send fails — even for a legitimate request. This was a real bug: it
+made submissions vanish while the page said "your request has been received".
 
-```js
-// site/assets/js/main.js
-var CONFIG = {
-  FORM_ENDPOINT: 'https://api.web3forms.com/submit',  // <- paste yours
-  CURRENCY: 'CAD'
-};
-```
+A native POST is a navigation, not an XHR. No CORS applies, it works with
+JavaScript disabled, and if the provider ever shows a challenge the visitor
+sees it and can complete it rather than the request dying silently.
 
-Submissions then arrive by email. No server-side code needed.
+JavaScript only validates and guards spam; it never blocks the submit.
+
+Every form also carries an always-visible **"email this to us instead"** link
+that builds a `mailto:` containing everything typed, so an enquiry cannot be
+lost even if the endpoint is unreachable.
+
+**One-time step:** the first submission triggers an activation email from
+FormSubmit to the address in `FORM_ACTION`. Until someone clicks that link,
+nothing is delivered.
+
+To switch providers, change `FORM_ACTION` (and add any required hidden fields,
+e.g. Web3Forms needs `access_key`).
 
 ---
 

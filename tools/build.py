@@ -122,6 +122,10 @@ with open(PRICING_PATH, encoding="utf-8") as _fh:
 # listing suspension.
 TESTIMONIALS = []
 
+# Form submissions POST here. FormSubmit needs no account and no API key;
+# the first submission triggers a one-time activation email to this address.
+FORM_ACTION = "https://formsubmit.co/" + BUSINESS["email"]
+
 B = BUSINESS
 TEL = B["phone_href"]
 PHONE = B["phone_display"]
@@ -637,7 +641,8 @@ def quote_form(form_id="quote-form", heading=True):
         if heading else ""
     )
     return f"""
-<form class="est-panel" id="{form_id}" data-form novalidate>
+<form class="est-panel" id="{form_id}" data-form novalidate
+      method="POST" action="{FORM_ACTION}">
   {head}
   <div class="field-grid mt-2">
     <div class="field">
@@ -685,6 +690,7 @@ def quote_form(form_id="quote-form", heading=True):
     <input type="hidden" name="_subject" value="New quote request from fastandperfect.ca">
     <input type="hidden" name="_template" value="table">
     <input type="hidden" name="_captcha" value="false">
+    <input type="hidden" name="_next" value="{B['domain']}/thank-you.html">
     <div class="hp" aria-hidden="true">
       <label for="q-gotcha">Leave this blank</label>
       <input type="text" id="q-gotcha" name="_gotcha" tabindex="-1" autocomplete="off">
@@ -700,12 +706,15 @@ def quote_form(form_id="quote-form", heading=True):
     </div>
     <div class="field field--full">
       <div class="form-note mt-1" style="margin-bottom:1rem">{icon('wallet', 17)}
-        <span>{PRICING['submit_disclaimer']} {PRICING['estimate_factors']}</span></div>
-      <button class="btn btn--gold btn--lg btn--block" type="submit">
+        <span>{PRICING['submit_disclaimer']} {PRICING['estimate_factors']}
+        {PRICING['travel_note']}</span></div>
+      <button class="btn btn--gold btn--lg btn--block" type="submit"
+              data-label="Send my free quote request">
         {icon('sparkle', 17)} Send my free quote request
       </button>
       <p class="field-hint mt-1" style="text-align:center">
-        Or call {PHONE} if you would rather talk it through.
+        Or call {PHONE}, or
+        <a href="mailto:{B['email']}" data-mailto-fallback>email this to us instead</a>.
       </p>
     </div>
   </div>
@@ -992,6 +1001,7 @@ def quote_calculator(preselect=("residential",)):
     <div id="quote-recurring"></div>
     <ul class="est-break" id="quote-lines"></ul>
     <p class="est-submit-note" data-pricing-note="submit_disclaimer">{p['submit_disclaimer']}</p>
+    <p class="est-submit-note" data-pricing-note="travel_note">{p['travel_note']}</p>
     <a class="btn btn--gold btn--block" href="quote.html#quote-form" id="quote-cta">
       Send me this quote {icon('arrow', 16)}</a>
     <p class="est-foot" data-pricing-note="disclaimer">{p['disclaimer']}</p>
@@ -1069,6 +1079,7 @@ def carpet_rate_table():
       </table>
     </div>
     <p class="field-hint mt-2" data-pricing-note="minimum_explainer">{p['minimum_explainer']}</p>
+    <p class="field-hint mt-1" data-pricing-note="travel_note">{p['travel_note']}</p>
     <p class="field-hint mt-1" data-pricing-note="disclaimer">{p['disclaimer']}</p>
     <p class="field-hint mt-1" data-pricing-note="max_room">{p['max_room_note']}</p>
   </div>
@@ -1150,6 +1161,7 @@ def residential_rate_table():
     applies to the cleaning package only, never to add-ons, carpet, upholstery
     or commercial work.</p>
     <p class="field-hint mt-1" data-pricing-note="disclaimer">{PRICING['disclaimer']}</p>
+    <p class="field-hint mt-1" data-pricing-note="travel_note">{PRICING['travel_note']}</p>
   </div>
 </section>
 """
@@ -2412,7 +2424,8 @@ def build_book():
 <section class="section">
   <div class="shell">
     <div class="contact-grid">
-      <form class="est-panel" id="booking-form"{book_prices_attr} data-form novalidate>
+      <form class="est-panel" id="booking-form"{book_prices_attr} data-form novalidate
+            method="POST" action="{FORM_ACTION}">
         <span class="eyebrow">Step 1 — the job</span>
         <div class="field field--full mt-1">
           <span class="field-label">Service</span>
@@ -2495,6 +2508,7 @@ def build_book():
           <input type="hidden" name="_subject" value="New booking request from fastandperfect.ca">
           <input type="hidden" name="_template" value="table">
           <input type="hidden" name="_captcha" value="false">
+          <input type="hidden" name="_next" value="{B['domain']}/thank-you.html">
           <div class="hp" aria-hidden="true">
             <label for="b-gotcha">Leave this blank</label>
             <input type="text" id="b-gotcha" name="_gotcha" tabindex="-1" autocomplete="off">
@@ -2513,9 +2527,14 @@ def build_book():
             you first — you can change or cancel free up to 24 hours before.</span></div>
           </div>
           <div class="field field--full">
-            <button class="btn btn--gold btn--lg btn--block" type="submit">
+            <button class="btn btn--gold btn--lg btn--block" type="submit"
+                    data-label="Request this booking">
               {icon('calendar', 17)} Request this booking
             </button>
+            <p class="field-hint mt-1" style="text-align:center">
+              Or call {PHONE}, or
+              <a href="mailto:{B['email']}" data-mailto-fallback>email this to us instead</a>.
+            </p>
           </div>
         </div>
         <div class="form-status" aria-live="polite"></div>
@@ -2838,6 +2857,35 @@ def build_sitemap():
         fh.write(robots)
 
 
+def build_thank_you():
+    """Where the form POST lands after a successful submission."""
+    body = f"""
+<section class="section" style="text-align:center;padding-block:clamp(4rem,10vw,7rem)">
+  <div class="shell" style="max-width:660px">
+    <span class="eyebrow eyebrow--center">Request received</span>
+    <h1 class="h-xl">Thanks &mdash; that's <span class="tilt">with us</span>.</h1>
+    <p class="lede mt-2" style="margin-inline:auto">We have your request and will
+    come back to you with a written quote. If it is urgent, calling is always
+    faster than waiting on email.</p>
+
+    <div class="cta-band__actions">
+      <a class="btn btn--gold btn--lg" href="tel:{TEL}">{icon('phone', 17)} {PHONE}</a>
+      <a class="btn btn--ghost btn--lg" href="sms:{TEL}">{icon('message', 17)} Text us</a>
+    </div>
+
+    <div class="form-note mt-4" style="text-align:left">{icon('wallet', 17)}
+      <span>{PRICING['submit_disclaimer']} {PRICING['travel_note']}</span></div>
+
+    <p class="mt-4"><a class="card-link" href="index.html">Back to the website
+    {icon('arrow', 15)}</a></p>
+  </div>
+</section>
+"""
+    page("thank-you.html", f"Request received | {B['legal_name']}",
+         "Your request has been received. We will come back to you with a "
+         "written quote.", body, schemas=[], noindex=True)
+
+
 def build_404():
     body = f"""
 <section class="section" style="text-align:center;padding-block:clamp(5rem,12vw,9rem)">
@@ -2879,6 +2927,7 @@ def main():
     build_contact()
     build_privacy()
     build_404()
+    build_thank_you()
     build_admin_pricing()
     build_sitemap()
 
