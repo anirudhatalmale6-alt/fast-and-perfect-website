@@ -131,6 +131,14 @@ for page in pages:
         for m2 in OTHER_STREET.finditer(visible_text(html)):
             fail(page, f"a street address that is not the confirmed one: {m2.group(0)!r}")
 
+        # A social icon pointing at "#" is a dead link on every page. They
+        # sat in the footer for weeks while the accounts were being created
+        # and a visitor clicking one went nowhere. An absent icon is honest.
+        for m2 in re.finditer(r'<a[^>]+href="#"[^>]*aria-label="([^"]+)"', html):
+            fail(page, f"dead placeholder link for {m2.group(1)!r}")
+        for m2 in re.finditer(r'<a[^>]+href=""[^>]*aria-label="([^"]+)"', html):
+            fail(page, f"empty link for {m2.group(1)!r}")
+
 # ---------------------------------------------------------- 4. prices trace to pricing.json
 allowed = {0}
 for t in PRICING["residential"]["tiers"]:

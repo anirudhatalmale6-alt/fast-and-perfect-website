@@ -74,11 +74,18 @@ BUSINESS = {
         "Griesbach", "Glenora", "Strathcona", "Mill Woods", "The Hamptons",
         "Riverbend", "Castle Downs",
     ],
+    # Only live, confirmed profiles. An empty string means "not ready yet"
+    # and the icon is not rendered at all — a social icon linking to "#" is a
+    # dead link on every page, and four of them made the footer look broken.
+    # The canonical page URL is used, never the share link: a facebook.com/
+    # share/... address carries tracking parameters and is not a permanent
+    # address for the page.
     "social": {
-        "facebook": "#",     # PLACEHOLDER — paste the page URL once created
-        "instagram": "#",    # PLACEHOLDER
-        "tiktok": "#",       # PLACEHOLDER
-        "google": "#",       # PLACEHOLDER — Google Business Profile
+        "facebook": "https://www.facebook.com/people/Fast-and-Perfect-Ltd/61594587737547/",
+        "kijiji": "https://www.kijiji.ca/o-profile/1046796422",
+        "instagram": "",   # not created yet
+        "tiktok": "",      # not created yet
+        "google": "",      # Google Business Profile, link pending
     },
 }
 
@@ -172,6 +179,7 @@ def icon(name, size=18, stroke=2):
         "pin": '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
         "clock": '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
         "map": '<path d="m9 4 6 2 5-2v14l-5 2-6-2-5 2V6z"/><path d="M9 4v14M15 6v14"/>',
+        "tag": '<path d="M20.6 13.4 12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.4" fill="currentColor" stroke="none"/>',
         "check": '<path d="M20 6 9 17l-5-5"/>',
         "shield": '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',
         "star": '<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" stroke="none"/>',
@@ -196,6 +204,40 @@ def icon(name, size=18, stroke=2):
         f'stroke="currentColor" stroke-width="{stroke}" stroke-linecap="round" '
         f'stroke-linejoin="round" aria-hidden="true" focusable="false">{p}</svg>'
     )
+
+
+# Which social entries have a real link, in the order they should appear.
+SOCIAL_ORDER = [
+    ("facebook", "facebook", "Facebook"),
+    ("instagram", "instagram", "Instagram"),
+    ("tiktok", "tiktok", "TikTok"),
+    ("google", "google", "Google Business Profile"),
+    ("kijiji", "tag", "Kijiji"),
+]
+
+
+def socials_html(size=18, style=""):
+    """Only render icons for profiles that actually exist.
+
+    An icon pointing at "#" is a dead link on every page of the site. Four of
+    them sat in the footer while the accounts were still being created, so a
+    visitor clicking any of them went nowhere. An absent icon is honest; a
+    broken one is not.
+
+    External profiles get rel="noopener" and open in a new tab so the visitor
+    does not lose the quote form they were halfway through.
+    """
+    out = []
+    for key, ico, label in SOCIAL_ORDER:
+        url = (BUSINESS["social"].get(key) or "").strip()
+        if not url or url == "#":
+            continue
+        st = f' style="{style}"' if style else ""
+        out.append(
+            f'<a href="{url}" aria-label="{label}" target="_blank" '
+            f'rel="noopener"{st}>{icon(ico, size)}</a>'
+        )
+    return "".join(out)
 
 
 # ---------------------------------------------------------------- nav data
@@ -305,12 +347,7 @@ def footer():
         <p class="footer-about">Locally owned cleaning company serving {B['city']} as our
         primary service area, plus {len(B['secondary_areas'])} surrounding communities
         across the Edmonton region. Residential, commercial and carpet cleaning.</p>
-        <div class="socials">
-          <a href="{soc['facebook']}" aria-label="Facebook">{icon('facebook', 18)}</a>
-          <a href="{soc['instagram']}" aria-label="Instagram">{icon('instagram', 18)}</a>
-          <a href="{soc['tiktok']}" aria-label="TikTok">{icon('tiktok', 18)}</a>
-          <a href="{soc['google']}" aria-label="Google Business Profile">{icon('google', 18)}</a>
-        </div>
+        <div class="socials">{socials_html(18)}</div>
       </div>
       <div>
         <div class="footer-h">Services</div>
@@ -405,7 +442,7 @@ def local_business_schema():
         "geo": {"@type": "GeoCoordinates", "latitude": B["lat"], "longitude": B["lng"]},
         "areaServed": [{"@type": "City", "name": a} for a in B["areas"]],
         "openingHoursSpecification": hours,
-        "sameAs": [v for v in B["social"].values() if v != "#"],
+        "sameAs": [v for v in B["social"].values() if v and v != "#"],
         "hasOfferCatalog": {
             "@type": "OfferCatalog",
             "name": "Cleaning Services",
@@ -2650,12 +2687,7 @@ def build_contact():
           <h3 class="h-sm">Follow along</h3>
           <p class="mt-1" style="color:var(--ink-soft);font-size:.95rem">Before-and-afters,
           seasonal offers and the occasional satisfying carpet video.</p>
-          <div class="socials mt-2" style="--sage-deep:var(--pine)">
-            <a href="{B['social']['facebook']}" aria-label="Facebook" style="border-color:var(--line)">{icon('facebook', 18)}</a>
-            <a href="{B['social']['instagram']}" aria-label="Instagram" style="border-color:var(--line)">{icon('instagram', 18)}</a>
-            <a href="{B['social']['tiktok']}" aria-label="TikTok" style="border-color:var(--line)">{icon('tiktok', 18)}</a>
-            <a href="{B['social']['google']}" aria-label="Google Business Profile" style="border-color:var(--line)">{icon('google', 18)}</a>
-          </div>
+          <div class="socials mt-2" style="--sage-deep:var(--pine)">{socials_html(18, 'border-color:var(--line)')}</div>
         </div>
       </div>
     </div>
