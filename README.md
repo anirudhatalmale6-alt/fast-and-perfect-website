@@ -24,7 +24,7 @@ These are stand-in values. Everything else is production-ready.
 | Reviews | **Removed** — none published | `tools/build.py` → `TESTIMONIALS` |
 | All pricing | **Live** — owner-confirmed | `site/assets/data/pricing.json` |
 | Insurance / bonding / guarantees | **Removed** — none published | `tools/build.py` → `CLAIMS` |
-| Form delivery | Native POST to FormSubmit | `tools/build.py` → `FORM_ACTION` |
+| Form delivery | Own endpoint `/api/enquiry` | `functions/api/enquiry.js` |
 
 ### The claims gate
 
@@ -167,7 +167,7 @@ open-plan areas are quoted separately.
 Run both checks after any change:
 
 ```bash
-node tools/test_pricing.js        # 136 assertions on the pricing rules
+node tools/test_pricing.js        # 148 assertions on the pricing rules
 python3 tools/check_consistency.py # site-wide copy + contact-detail consistency
 ```
 
@@ -182,31 +182,64 @@ commercial band.
 
 ## How the forms deliver
 
-The quote, contact and booking forms **POST natively** to FormSubmit
-(`tools/build.py` → `FORM_ACTION`), landing on `thank-you.html` via `_next`.
+The quote, contact and booking forms post to **`/api/enquiry`** — the site's
+own endpoint, running as a Cloudflare Pages Function on this same domain
+(`functions/api/enquiry.js`).
 
-They deliberately do **not** use `fetch()`. A fetch is an XHR and is therefore
-subject to CORS. FormSubmit sits behind bot protection that answers without an
-`Access-Control-Allow-Origin` header, so the browser refuses to read the reply
-and the send fails — even for a legitimate request. This was a real bug: it
-made submissions vanish while the page said "your request has been received".
+### Why not post straight to a form service
 
-A native POST is a navigation, not an XHR. No CORS applies, it works with
-JavaScript disabled, and if the provider ever shows a challenge the visitor
-sees it and can complete it rather than the request dying silently.
+That was the original design, and it failed twice, both times invisibly:
 
-JavaScript only validates and guards spam; it never blocks the submit.
+1. **Posting by `fetch()` is an XHR, so CORS applies.** The service answered
+   from behind bot protection without an `Access-Control-Allow-Origin`
+   header, so the browser refused to read the reply and every send died.
+   Reproduced on the live domain.
+2. **Posting natively fixed CORS**, but the service then began returning
+   HTTP 500 from its own servers — which navigated the customer off
+   fastandperfect.ca and onto a stranger's error page. Confirmed on both the
+   custom domain and the `pages.dev` URL, so it was not a DNS or domain issue.
 
-Every form also carries an always-visible **"email this to us instead"** link
-that builds a `mailto:` containing everything typed, so an enquiry cannot be
-lost even if the endpoint is unreachable.
+Posting to our own origin removes both. There is no CORS on a same-origin
+request, so the page can read the reply and say truthfully whether the
+enquiry was delivered; and the visitor never leaves the site.
 
-**One-time step:** the first submission triggers an activation email from
-FormSubmit to the address in `FORM_ACTION`. Until someone clicks that link,
-nothing is delivered.
+### The rules it enforces
 
-To switch providers, change `FORM_ACTION` (and add any required hidden fields,
-e.g. Web3Forms needs `access_key`).
+- **A success message only ever follows a confirmed delivery.** A provider
+  answering `200` with `success: false` — which is exactly what happens while
+  an address is unactivated — counts as a failure, not a send.
+- **A failure says so**, and points at the always-visible *"email this to us
+  instead"* link (which carries everything the customer typed) and the phone
+  number. Their typing is never cleared on failure.
+- **It works with JavaScript off.** The form has a real `method`/`action`;
+  the endpoint redirects to `thank-you.html` on success, or back to
+  `contact.html?send=failed` on failure, which the page then reports.
+- **Honeypots are checked server-side too**, and answer normally so bots
+  learn nothing.
+
+### Choosing a mail provider
+
+Set **one** of these in the Cloudflare dashboard → *Workers & Pages →
+fast-and-perfect-website → Settings → Environment variables* (add it to both
+Production and Preview):
+
+| Variable | Provider | Notes |
+|---|---|---|
+| `WEB3FORMS_KEY` | Web3Forms | free key, no card, no subscription |
+| `BREVO_API_KEY` | Brevo | free tier, 300 emails/day |
+| `RESEND_API_KEY` | Resend | free tier, needs domain verification |
+
+`TO_EMAIL` overrides the destination (default `info@fastandperfect.ca`).
+
+With none set it falls back to FormSubmit, which needs no account but is the
+service that was failing — hence a fallback rather than the default.
+
+Adding a provider is one function in `enquiry.js` plus one line in
+`pickSender()`. Run the tests after any change:
+
+```bash
+node tools/test_enquiry.mjs    # 30 assertions on delivery, honeypots, no-JS
+```
 
 ---
 
@@ -250,9 +283,14 @@ site/                    ← the website (this is what gets uploaded)
   assets/data/pricing.json        ← every carpet/upholstery price
   assets/fonts/          ← Fraunces + Karla, self-hosted (SIL Open Font License)
   assets/img/            ← SVG artwork
+functions/
+  api/enquiry.js         ← the form endpoint (Cloudflare Pages Function)
 tools/
   build.py               ← generates the HTML pages
   make_placeholders.py   ← generates the SVG artwork
+  test_pricing.js        ← pricing rule assertions
+  test_enquiry.mjs       ← form-delivery assertions
+  check_consistency.py   ← site-wide copy + contact-detail consistency
 ```
 
 ---

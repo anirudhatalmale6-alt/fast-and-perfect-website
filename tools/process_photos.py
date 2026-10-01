@@ -17,6 +17,15 @@ import os
 from PIL import Image, ImageOps
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+# The client's original photos are deliberately NOT in this repository.
+# They are phone photos of real customers' homes, plus screenshots of the
+# owner's own registrar and Cloudflare accounts, so they have no business
+# sitting in a public repo. Only the cropped, web-sized results in
+# site/assets/img/photos/ are committed, and those are what the site uses.
+#
+# To re-run this script, put the originals in source-photos/ (gitignored).
+SRC = os.path.join(ROOT, "source-photos")
 OUT = os.path.join(ROOT, "site", "assets", "img", "photos")
 os.makedirs(OUT, exist_ok=True)
 
@@ -40,7 +49,7 @@ def crop_to_ratio(im, ratio=TARGET_W / TARGET_H, anchor=(0.5, 0.5)):
 
 
 def emit(src, name, anchor=(0.5, 0.5), crop_box=None):
-    path = src if os.path.isabs(src) else os.path.join(ROOT, src)
+    path = src if os.path.isabs(src) else os.path.join(SRC, src)
     im = Image.open(path)
     im = ImageOps.exif_transpose(im).convert("RGB")   # phone photos carry rotation
     if crop_box:
@@ -73,7 +82,7 @@ STRIP_LABEL_H = 96
 
 
 def strip_panel(index):
-    im = Image.open(os.path.join(ROOT, STRIP))
+    im = Image.open(os.path.join(SRC, STRIP))
     w, h = im.size
     pw = w // 4
     return (index * pw, STRIP_LABEL_H, (index + 1) * pw, h)
@@ -90,7 +99,7 @@ GRIDS = {
 def grid_tile(grid_key, index):
     """Crop box for one tile of a grid (1-based, row-major)."""
     fname, cols, rows = GRIDS[grid_key]
-    im = Image.open(os.path.join(ROOT, fname))
+    im = Image.open(os.path.join(SRC, fname))
     w, h = im.size
     tw, th = w // cols, h // rows
     r, c = divmod(index - 1, cols)
@@ -110,7 +119,7 @@ EQUIPMENT_BOX = None  # computed at run time from the image size
 
 
 def emit_equipment(name):
-    im = Image.open(os.path.join(ROOT, EQUIPMENT))
+    im = Image.open(os.path.join(SRC, EQUIPMENT))
     w, h = im.size
     box = (int(w * 0.365), int(h * 0.16), int(w * 0.79), h)
     return emit(EQUIPMENT, name, anchor=(0.5, 0.72), crop_box=box)
