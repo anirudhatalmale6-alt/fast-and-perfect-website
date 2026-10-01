@@ -52,18 +52,25 @@ const SITE = 'https://fastandperfect.ca';
 /* Field order for the email body. Anything not listed still gets included,
    after these, so adding a field to a form can never silently drop it. */
 const FIELD_ORDER = [
-  'name', 'phone', 'email', 'address', 'area', 'service', 'services',
+  'name', 'phone', 'email', 'address', 'city', 'area',
+  'service_interest', 'timing', 'service', 'services',
   'package', 'bedrooms', 'bathrooms', 'sqft', 'frequency', 'property_type',
-  'date', 'window', 'detail', 'estimate', 'message', 'consent'
+  'date', 'window', 'quote_details', 'detail', 'estimate', 'message', 'consent'
 ];
 
 const LABELS = {
   name: 'Name', phone: 'Phone', email: 'Email', address: 'Address',
-  area: 'Service area', service: 'Service', services: 'Services',
+  area: 'Service area', city: 'City', service: 'Service', services: 'Services',
   package: 'Package', bedrooms: 'Bedrooms', bathrooms: 'Bathrooms',
   sqft: 'Square footage', frequency: 'Frequency',
   property_type: 'Property type', date: 'Preferred date',
   window: 'Arrival window', detail: 'Selection detail',
+  // These three are what the live contact and quote forms actually post.
+  // Without labels they arrive in the email under their raw field names,
+  // which is readable but ugly. Checked against the rendered form, not
+  // against what the form was assumed to send.
+  service_interest: 'Service needed', timing: 'Preferred timing',
+  quote_details: 'Quote selection',
   estimate: 'On-site estimate shown', message: 'Message',
   consent: 'Consented to be contacted'
 };
