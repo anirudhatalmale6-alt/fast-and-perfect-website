@@ -29,7 +29,15 @@ BUSINESS = {
     "phone_display": "(587) 338-0069",
     "phone_href": "+15873380069",
     "email": "info@fastandperfect.ca",
-    "domain": "https://fastandperfect.ca",
+    # The host Cloudflare actually serves. The apex redirects to www, so
+    # canonicals, og:url, the sitemap and robots must all say www too.
+    # They previously said the apex, which meant Google was told the
+    # canonical version of every page was a URL that redirects straight back
+    # to the one it had just crawled. Contradictory signals, and ranking
+    # weight can end up split between the two hostnames.
+    # If this is ever flipped to prefer the apex in Cloudflare, change this
+    # one line back and rebuild.
+    "domain": "https://www.fastandperfect.ca",
     # Confirmed by the owner in writing and in a signed address document.
     # A downtown office suite, NOT his home — he asked from the start that no
     # residential address of his ever appear publicly, and this satisfies it.
@@ -471,7 +479,13 @@ def page(slug, title, description, body, schemas=None, current=None, keywords=No
         f'<script type="application/ld+json">{json.dumps(s, ensure_ascii=False)}</script>'
         for s in schemas
     )
-    canonical = B["domain"] + "/" + ("" if slug == "index.html" else slug)
+    # Cloudflare Pages serves /contact, and 308s /contact.html to it. A
+    # canonical pointing at a URL that redirects is a wasted signal, so
+    # point it at the destination. Internal links keep their .html so the
+    # site still works on a plain file host.
+    canonical = B["domain"] + "/" + ("" if slug == "index.html"
+                                     else slug[:-5] if slug.endswith(".html")
+                                     else slug)
     robots = ("noindex, nofollow" if noindex
               else "index, follow, max-image-preview:large")
     kw = f'<meta name="keywords" content="{keywords}">' if keywords else ""
@@ -2846,7 +2860,7 @@ def build_admin_pricing():
 
 def build_sitemap():
     urls = "".join(
-        f"<url><loc>{B['domain']}/{'' if s == 'index.html' else s}</loc>"
+        f"<url><loc>{B['domain']}/{'' if s == 'index.html' else s[:-5] if s.endswith('.html') else s}</loc>"
         f"<changefreq>{cf}</changefreq><priority>{p}</priority></url>"
         for s, p, cf in PAGES_FOR_SITEMAP
     )
