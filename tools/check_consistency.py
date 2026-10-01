@@ -56,8 +56,16 @@ STALE = {
     "8am–7pm": "old business hours",
     "8:00 am – 7:00 pm": "old business hours",
     "9:00 am – 5:00 pm": "old Saturday hours",
-    "By appointment": "old Sunday hours",
 }
+
+# "By appointment" is a legitimate phrase in commercial copy ("evening and
+# after-hours cleaning by appointment"), so a bare substring match raises a
+# false alarm on perfectly good text. It is only stale when it appears AS an
+# hours value, i.e. sitting next to a day name in the hours list. Check it in
+# context instead of dropping the check.
+STALE_IN_CONTEXT = [
+    (re.compile(r"Sunday[^.]{0,40}?By appointment", re.I), "old Sunday hours"),
+]
 
 # ------------------------------------------------- 2. package-structure contradictions
 # Things that must NEVER be described as included in a package, because the
@@ -90,6 +98,11 @@ for page in pages:
     for needle, why in STALE.items():
         if needle.lower() in low:
             fail(page, f"{why} still present ({needle!r})")
+
+    for rx, why in STALE_IN_CONTEXT:
+        m0 = rx.search(text)
+        if m0:
+            fail(page, f"{why} still present ({m0.group(0)[:50]!r})")
 
     # an always-paid add-on described as included
     for item in ALWAYS_PAID:

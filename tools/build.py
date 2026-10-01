@@ -1768,6 +1768,8 @@ def build_commercial():
         changing.</p>
         <ul class="check-list">
           <li>{icon('check', 18)}<span><b>Scheduled around your hours</b> — evenings, early mornings or weekends.</span></li>
+          <li>{icon('clock', 18)}<span><b>Flexible scheduling available</b>, including evening
+          and after-hours commercial cleaning by appointment.</span></li>
           <li>{icon('check', 18)}<span><b>A written scope of work</b>, agreed task by task before we start.</span></li>
           <li>{icon('check', 18)}<span><b>Change the scope whenever you need</b> — the price moves with it, transparently.</span></li>
           <li>{icon('check', 18)}<span><b>Start with a trial</b> rather than a long commitment.</span></li>
@@ -1843,7 +1845,9 @@ def build_commercial():
       <div class="step reveal" data-delay="180">
         <h3 class="h-sm">Schedule agreed</h3>
         <p>We settle on the days and times that keep your staff and customers
-        undisturbed, then check in early on to adjust anything that isn't working.</p>
+        undisturbed, then check in early on to adjust anything that isn't working.
+        Flexible scheduling available, including evening and after-hours
+        commercial cleaning by appointment.</p>
       </div>
     </div>
   </div>
