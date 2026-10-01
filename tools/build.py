@@ -369,6 +369,20 @@ def local_business_schema():
         "@id": B["domain"] + "/#business",
         "name": B["legal_name"],
         "alternateName": B["name"],
+        # Google shows this in the knowledge panel and uses it to understand
+        # what the business does. It was the one field missing from an
+        # otherwise complete LocalBusiness record. Deliberately claims
+        # nothing that is not confirmed: no insurance, no ratings, no years
+        # in business. Mirrors the Google Business Profile description so
+        # the two do not contradict each other.
+        "description": (
+            f"{B['legal_name']} is a locally owned cleaning company serving "
+            f"{B['primary_area']} and the surrounding communities. Regular "
+            "house cleaning, deep cleaning, move in and move out cleaning, "
+            "office and retail cleaning, and carpet and upholstery cleaning. "
+            "Every job is quoted before work begins, so the price is agreed "
+            "in advance."
+        ),
         "url": B["domain"] + "/",
         "telephone": B["phone_href"],
         "email": B["email"],
