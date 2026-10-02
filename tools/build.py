@@ -860,12 +860,23 @@ HOME_FAQ = [
 ]
 
 
-def qty_row(key, label, price_key, min_v=0, max_v=30):
-    """One line item: label, its price, and a quantity stepper."""
+def qty_row(key, label, price_key, min_v=0, max_v=30, hint="", addon=""):
+    """One line item: label, its price, and a quantity stepper.
+
+    `hint` is a short line under the label, for add-ons where the name alone
+    does not tell the customer what they are buying.
+    """
+    hint_html = f'<span class="qty__hint">{hint}</span>' if hint else ""
+    # A residential add-on also needs data-addon, which is what the script
+    # looks for when it writes the price next to the label and when it marks
+    # an add-on as already included in the chosen package. Without it a
+    # quantity add-on silently showed NO price while every checkbox add-on
+    # showed one, which is the kind of inconsistency a customer notices.
+    addon_attr = f' data-addon="{addon}"' if addon else ""
     return f"""
-<div class="qty" data-qty="{key}" data-min="{min_v}" data-max="{max_v}">
+<div class="qty" data-qty="{key}" data-min="{min_v}" data-max="{max_v}"{addon_attr}>
   <span class="qty__label">{label}
-    <span class="qty__price" data-price-for="{price_key}"></span></span>
+    <span class="qty__price" data-price-for="{price_key}"></span>{hint_html}</span>
   <span class="stepper stepper--sm">
     <button type="button" data-step="down" aria-label="Fewer: {label}">&minus;</button>
     <output>0</output>
@@ -906,7 +917,12 @@ def quote_calculator(preselect=("residential",)):
     addon_rows = ""
     for a in res["addons"]:
         if a.get("qty"):
-            addon_rows += qty_row(a["key"], a["label"], "addon-" + a["key"], 0, 10)
+            # A written hint, not a truncation of `includes`. Auto-cutting the
+            # list dropped folding and linen replacement, which are exactly the
+            # parts that distinguish this from "we run a wash".
+            hint = a.get("hint", "")
+            addon_rows += qty_row(a["key"], a["label"], "addon-" + a["key"], 0, 10,
+                                  hint=hint, addon=a["key"])
         else:
             addon_rows += (
                 f'<label class="treat" data-addon="{a["key"]}">'
@@ -1185,11 +1201,18 @@ def residential_rate_table():
         f"<td colspan=\"3\">{PRICING['custom_quote_label']}</td></tr>"
     )
 
-    addons = "".join(
-        f"<tr><td>{a['label']}</td><td>{'Per unit' if a.get('qty') else 'Per visit'}</td>"
-        f"<td>{'from ' if a.get('from') else '+'}{m(a['price'])}</td></tr>"
-        for a in res["addons"]
-    )
+    def addon_row(a):
+        scope = ""
+        if a.get("includes"):
+            items = "".join(f"<li>{i}</li>" for i in a["includes"])
+            note = f'<p class="field-hint mt-1">{a["note"]}</p>' if a.get("note") else ""
+            scope = (f'<ul class="mini-list mt-1">{items}</ul>{note}')
+        unit = "Per load" if a.get("unit") == "load" else (
+            "Per unit" if a.get("qty") else "Per visit")
+        return (f"<tr><td>{a['label']}{scope}</td><td>{unit}</td>"
+                f"<td>{'from ' if a.get('from') else '+'}{m(a['price'])}</td></tr>")
+
+    addons = "".join(addon_row(a) for a in res["addons"])
     disc = "".join(
         f"<tr><td>{r['label']}</td><td>From the second visit</td>"
         f"<td>{r['discount']}% off the cleaning package</td></tr>"

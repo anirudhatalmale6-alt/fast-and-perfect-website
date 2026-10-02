@@ -65,8 +65,11 @@
       'Custom Quote rather than guessing.');
 
     var resAddons = p.residential.addons.map(function (a, i) {
+      // Say "per load" when the add-on defines that unit, so the owner is not
+      // guessing what a "unit" means when he comes to change the price.
+      var unit = a.unit ? 'Charged per ' + a.unit + '.' : 'Charged per unit.';
       return numField(a.label + ' ($)', a.price, 'residential.addons.' + i + '.price',
-        a.qty ? 'Charged per unit.' : (a.from ? 'Shown as \u201cfrom\u201d.' : ''));
+        a.qty ? unit : (a.from ? 'Shown as \u201cfrom\u201d.' : ''));
     }).join('');
     html += section('Residential add-ons', resAddons);
 

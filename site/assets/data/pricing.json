@@ -107,9 +107,18 @@
       },
       {
         "key": "laundry",
-        "label": "Laundry (per load)",
-        "price": 30,
-        "qty": true
+        "label": "Laundry & Linen Service",
+        "price": 25,
+        "qty": true,
+        "unit": "load",
+        "includes": [
+          "Collecting dirty laundry, towels and bed linens",
+          "Washing and drying",
+          "Folding clean laundry and towels",
+          "Replacing clean bed linens and making the bed when needed"
+        ],
+        "note": "Charged per load. For unusually large laundry or linen volumes we review the price with you when we confirm your quote.",
+        "hint": "Collected, washed, dried, folded, and clean linens put back on the bed."
       },
       {
         "key": "garage",
@@ -199,7 +208,8 @@
         ]
       }
     },
-    "always_paid_note": "Inside fridge, inside oven, interior windows, carpet cleaning and upholstery cleaning are optional paid add-ons on every package, including deep and move-in / move-out."
+    "always_paid_note": "Inside fridge, inside oven, interior windows, carpet cleaning and upholstery cleaning are optional paid add-ons on every package, including deep and move-in / move-out.",
+    "_laundry_NOTE": "ONE laundry add-on, not two. The owner asked for a 'Laundry & Linen Service' at $25 per load with a quantity selector. An add-on called 'Laundry (per load)' at $30 already existed and already had a working quantity selector, so this is that entry renamed, repriced and given its scope - NOT a second one. Two overlapping laundry add-ons at different prices would be a defect the customer sees. The key stays 'laundry' so saved quotes and in-progress sessions keep working."
   },
   "commercial": {
     "_NOTE": "Automatic estimates apply to standard offices and retail only. Every other property type is a custom quote.",

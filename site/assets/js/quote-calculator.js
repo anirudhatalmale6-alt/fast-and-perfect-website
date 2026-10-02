@@ -181,7 +181,12 @@
         priceEl.textContent = 'included';
       } else {
         var a = PRICING.residential.addons.filter(function (x) { return x.key === key; })[0];
-        if (a) priceEl.textContent = (a.from ? 'from ' : '') + window.FPCarpet.money(a.price);
+        if (a) {
+          /* Show the unit for anything charged per something, so "$25" does
+             not read as the price for the whole job. */
+          priceEl.textContent = (a.from ? 'from ' : '') +
+            window.FPCarpet.money(a.price) + (a.unit ? ' per ' + a.unit : '');
+        }
       }
     });
   }

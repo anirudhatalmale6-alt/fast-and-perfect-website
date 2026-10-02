@@ -1811,3 +1811,25 @@ ul.trust-row { list-style: none; margin: 0; padding-left: 0; padding-top: 1.6rem
   border-top: 1px dashed rgba(238, 243, 248, 0.3);
 }
 .est-break__min b { color: var(--marigold); }
+
+
+/* A short scope line under a quantity add-on, for services whose name alone
+   does not tell the customer what they are paying for. Deliberately quiet so
+   it supports the label rather than competing with it. */
+.qty__hint {
+  display: block;
+  font-size: .82rem;
+  line-height: 1.35;
+  color: var(--ink-faint);
+  font-weight: 400;
+  margin-top: 2px;
+  max-width: 34ch;
+}
+
+
+/* The itemised scope of an add-on inside a rate table cell. */
+.mini-list {
+  margin: 0; padding-left: 1.05rem;
+  font-size: .86rem; line-height: 1.45; color: var(--ink-soft);
+}
+.mini-list li { margin: 1px 0; }

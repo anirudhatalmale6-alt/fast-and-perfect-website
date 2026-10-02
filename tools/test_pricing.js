@@ -157,7 +157,37 @@ console.log('\n=== RESIDENTIAL: add-ons ===');
 {
   const r = residential({ package: 'regular', bedrooms: 3, bathrooms: 2,
     addons: { laundry: 3 } }, P);
-  eq('laundry x3 = 249 + 90', r.low, 339);
+  eq('laundry x3 = 249 + 75', r.low, 324);
+
+  /* Laundry & Linen Service, $25 per load, quantity driven.
+     The owner specified 1 load = $25, 2 = $50, 3 = $75. Each multiple is
+     asserted rather than trusting one case, because an off-by-one in the
+     quantity handling would still pass a single-value check. */
+  [[1, 25], [2, 50], [3, 75], [5, 125], [10, 250]].forEach(function (pair) {
+    var n = pair[0], expected = pair[1];
+    var only = residential({ package: 'regular', bedrooms: 3, bathrooms: 2,
+                             addons: { laundry: n } }, P);
+    var base = residential({ package: 'regular', bedrooms: 3, bathrooms: 2 }, P);
+    eq('laundry x' + n + ' adds $' + expected, only.low - base.low, expected);
+  });
+
+  /* It must appear as its own line in the breakdown, not folded into a total. */
+  var lr = residential({ package: 'regular', bedrooms: 3, bathrooms: 2,
+                         addons: { laundry: 2 } }, P);
+  var line = (lr.lines || []).filter(function (l) {
+    return /Laundry & Linen Service/.test(l.label);
+  });
+  eq('laundry has its own breakdown line', line.length, 1);
+  eq('laundry line shows the quantity', /2 x/.test(line[0] ? line[0].label : ''), true);
+  eq('laundry line amount is 2 x 25', line[0] ? line[0].amount : 0, 50);
+
+  /* Never discounted by a recurring schedule - add-ons never are. */
+  var wk = residential({ package: 'regular', bedrooms: 3, bathrooms: 2,
+                         addons: { laundry: 4 }, recurring: 'weekly' }, P);
+  var wkBase = residential({ package: 'regular', bedrooms: 3, bathrooms: 2,
+                             recurring: 'weekly' }, P);
+  eq('laundry not discounted on a weekly schedule',
+     wk.afterTotal - wkBase.afterTotal, 100);
 }
 
 console.log('\n=== PACKAGE INCLUSIONS (owner rules, 29 Sep) ===');
@@ -311,7 +341,7 @@ const byKey = Object.fromEntries(P.items.map((i) => [i.key, i.price]));
   .forEach(([k, v]) => checks.push([`item ${k}`, byKey[k], v]));
 const addon = Object.fromEntries(P.residential.addons.map((a) => [a.key, a.price]));
 [['fridge', 59], ['oven', 59], ['cabinets', 75], ['windows', 60],
- ['laundry', 30], ['garage', 30], ['basement_fin', 65], ['basement_unfin', 25],
+ ['laundry', 25], ['garage', 30], ['basement_fin', 65], ['basement_unfin', 25],
  ['pet_hair', 20], ['wall_washing', 120]]
   .forEach(([k, v]) => checks.push([`add-on ${k}`, addon[k], v]));
 const disc = Object.fromEntries(P.residential.recurring.map((r) => [r.key, r.discount]));
