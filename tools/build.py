@@ -83,8 +83,8 @@ BUSINESS = {
     "social": {
         "facebook": "https://www.facebook.com/people/Fast-and-Perfect-Ltd/61594587737547/",
         "kijiji": "https://www.kijiji.ca/o-profile/1046796422",
-        "instagram": "",   # not created yet
-        "tiktok": "",      # not created yet
+        "instagram": "https://www.instagram.com/fastandperfectyeg/",
+        "tiktok": "https://www.tiktok.com/@fast.and.perfect",
         "google": "",      # Google Business Profile, link pending
     },
 }
