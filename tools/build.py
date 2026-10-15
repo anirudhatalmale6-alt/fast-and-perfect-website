@@ -85,7 +85,11 @@ BUSINESS = {
         "kijiji": "https://www.kijiji.ca/o-profile/1046796422",
         "instagram": "https://www.instagram.com/fastandperfectyeg/",
         "tiktok": "https://www.tiktok.com/@fast.and.perfect",
-        "google": "",      # Google Business Profile, link pending
+        # The CID form of the Maps link, not the share.google address the owner
+        # first sent. share.google is a temporary redirect (same category as a
+        # facebook.com/share link); maps.google.com/?cid= is the permanent
+        # address of the place and was verified to resolve to it.
+        "google": "https://maps.google.com/?cid=18298990590634894699",
     },
 }
 
