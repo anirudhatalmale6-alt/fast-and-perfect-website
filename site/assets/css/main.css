@@ -1833,3 +1833,15 @@ ul.trust-row { list-style: none; margin: 0; padding-left: 0; padding-top: 1.6rem
   font-size: .86rem; line-height: 1.45; color: var(--ink-soft);
 }
 .mini-list li { margin: 1px 0; }
+
+
+/* Before/after block on the Our Work page: three sliders. At tablet width
+   .grid--3 drops to two columns, which would leave the third slider alone on
+   the left of its row. Centre it at the same width as the others instead. */
+@media (max-width: 960px) and (min-width: 681px) {
+  .ba-grid > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: calc((100% - clamp(1.1rem, 2vw, 1.6rem)) / 2);
+  }
+}

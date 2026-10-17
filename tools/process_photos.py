@@ -125,6 +125,60 @@ def emit_equipment(name):
     return emit(EQUIPMENT, name, anchor=(0.5, 0.72), crop_box=box)
 
 
+# Bathtub pair. Unlike the kitchen, these were shot from DIFFERENT positions:
+# the before looks down the tub from the drain end, the after from the faucet
+# wall. A drag slider only reads as a reveal if both frames line up, so the
+# after is warped onto the before with a scale-and-rotate fixed by two
+# landmarks that exist in both photos: the overflow cover and the drain.
+# Two point pairs determine that transform exactly (here ~1.21x and ~14 deg).
+# Perspective still differs away from the landmarks, so the crop is kept
+# around the drain and the soap-scum patch, where the match holds.
+BATH_BEFORE = "IMG_7499.jpeg"
+BATH_AFTER = "IMG_5234.jpeg"
+BATH_LANDMARKS = {            # (overflow centre, drain centre), full-image px
+    "before": ((1005, 90), (1345, 252)),
+    "after": ((1020, 375), (1325, 437)),
+}
+BATH_CROP = (560, 50, 1760, 950)   # in BEFORE-frame coords; 1200x900, no upscale
+
+
+def emit_aligned_pair(before_src, after_src, marks, crop, names):
+    import math
+    B = Image.open(os.path.join(SRC, before_src)).convert("RGB")
+    A = Image.open(os.path.join(SRC, after_src)).convert("RGB")
+    (bo, bd), (ao, ad) = marks["before"], marks["after"]
+    vb = (bd[0] - bo[0], bd[1] - bo[1])
+    va = (ad[0] - ao[0], ad[1] - ao[1])
+    s = math.hypot(*vb) / math.hypot(*va)
+    th = math.atan2(vb[1], vb[0]) - math.atan2(va[1], va[0])
+    c, sn = math.cos(-th), math.sin(-th)
+    a_, b_, d_, e_ = c / s, -sn / s, sn / s, c / s   # output -> input (after)
+    x0, y0, x1, y1 = crop
+    w, h = x1 - x0, y1 - y0
+
+    def to_after(x, y):
+        return (ao[0] + a_ * (x - bo[0]) + b_ * (y - bo[1]),
+                ao[1] + d_ * (x - bo[0]) + e_ * (y - bo[1]))
+
+    # Refuse a crop the after photo does not fully cover, rather than
+    # silently filling the corners with black.
+    W, H = A.size
+    for qx, qy in ((x0, y0), (x1, y0), (x0, y1), (x1, y1)):
+        px, py = to_after(qx, qy)
+        assert 0 <= px <= W and 0 <= py <= H, f"crop corner {(qx, qy)} falls outside the after photo"
+
+    cx, fy = to_after(x0, y0)
+    after = A.transform((w, h), Image.AFFINE, (a_, b_, cx, d_, e_, fy),
+                        resample=Image.BICUBIC)
+    before = B.crop(crop)
+    for im, name in ((before, names[0]), (after, names[1])):
+        dest = os.path.join(OUT, name)
+        im.save(dest, "JPEG", quality=84, optimize=True, progressive=True)
+        print(f"  {name:26s} {w}x{h}  {os.path.getsize(dest)/1024:6.0f} KB"
+              f"   <- aligned {before_src if im is before else after_src}"
+              f"  (scale {s:.2f}, rot {math.degrees(th):.1f} deg)")
+
+
 def main():
     print("Section photos:")
     emit(LIVING_ROOM, "living-room.jpg")
@@ -142,6 +196,9 @@ def main():
         emit(STRIP, name, anchor=(0.5, 0.35), crop_box=strip_panel(i))
     for i, name in ((0, "ba-bathroom-before.jpg"), (1, "ba-bathroom-after.jpg")):
         emit(STRIP, name, anchor=(0.5, 0.55), crop_box=strip_panel(i))
+
+    emit_aligned_pair(BATH_BEFORE, BATH_AFTER, BATH_LANDMARKS, BATH_CROP,
+                      ("ba-bathtub-before.jpg", "ba-bathtub-after.jpg"))
 
     print("\nSection photos from the un-labelled grids:")
     emit_tile("C", 1, "office.jpg")            # office carpet vacuuming

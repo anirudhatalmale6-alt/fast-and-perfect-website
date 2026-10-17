@@ -2097,7 +2097,7 @@ def build_gallery():
       <span class="eyebrow eyebrow--center">Before &amp; after</span>
       <h2 class="h-lg">Drag the handle to compare.</h2>
     </div>
-    <div class="grid grid--2">
+    <div class="grid grid--3 ba-grid">
       <div class="reveal">
         <div class="ba">
           <img class="ba__before" src="assets/img/photos/ba-sofa-before.jpg" alt="Sofa upholstery before cleaning" loading="lazy" width="1200" height="900">
@@ -2117,6 +2117,16 @@ def build_gallery():
           <span class="ba__handle"></span><span class="ba__knob">{icon('chevrons', 18)}</span>
         </div>
         <p class="field-hint mt-1">{photo_caption("Kitchen, before and after a clean")}</p>
+      </div>
+      <div class="reveal" data-delay="220">
+        <div class="ba">
+          <img class="ba__before" src="assets/img/photos/ba-bathtub-before.jpg" alt="Bathtub with soap scum and water marks before cleaning" loading="lazy" width="1200" height="900">
+          <img class="ba__after" src="assets/img/photos/ba-bathtub-after.jpg" alt="The same bathtub after cleaning" loading="lazy" width="1200" height="900">
+          <span class="ba__tag ba__tag--before">Before</span>
+          <span class="ba__tag ba__tag--after">After</span>
+          <span class="ba__handle"></span><span class="ba__knob">{icon('chevrons', 18)}</span>
+        </div>
+        <p class="field-hint mt-1">{photo_caption("Bathtub, before and after cleaning")}</p>
       </div>
     </div>
   </div>
