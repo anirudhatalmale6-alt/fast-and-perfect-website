@@ -288,6 +288,20 @@
     }
   }
 
+  /* Which conversion each form reports. */
+  var EVENT_FOR = {
+    'quote-form': 'quote_request',
+    'contact-form': 'contact_request',
+    'booking-form': 'booking_request'
+  };
+  /* The low end of the on-screen estimate, as a number, if there is one.
+     Used only as the conversion's value; never anything personal. */
+  function estimateValue(form) {
+    var f = form.querySelector('[name="estimate"]');
+    var m = f && /([0-9][0-9,]*)/.exec(f.value || '');
+    return m ? parseInt(m[1].replace(/,/g, ''), 10) : undefined;
+  }
+
   $$('form[data-form]').forEach(function (form) {
     var status = $('.form-status', form);
     var submit = form.querySelector('[type="submit"]');
@@ -354,6 +368,16 @@
         /* Only ever confirm what the server actually confirmed. A response
            arriving is not the same thing as an email being delivered. */
         if (r.res.ok && r.body && r.body.ok === true) {
+          /* Conversion tracking fires HERE and nowhere else: after the
+             endpoint has confirmed delivery. A failed send never counts as
+             a lead. Read the estimate before reset() clears it. fpTrack
+             only exists, and only sends, once the visitor has accepted. */
+          if (window.fpTrack) {
+            window.fpTrack(EVENT_FOR[form.id] || 'contact_request', {
+              form_id: form.id,
+              value: estimateValue(form)
+            });
+          }
           form.reset();
           refreshAlt();
           reset();

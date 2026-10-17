@@ -215,6 +215,7 @@
       }
       if (footEl) footEl.textContent = PRICING.disclaimer;
       writeDetail(s, null);
+      writeEstimate('');
       return;
     }
 
@@ -238,6 +239,21 @@
     }, PRICING);
 
     var CUSTOM = PRICING.custom_quote_label || 'Custom Quote';
+
+    /* The figure the customer is looking at goes into the quote form's
+       hidden "estimate" field, so the enquiry email shows the price they
+       were quoted on screen ("On-site estimate shown"). The original
+       calculator did this; the rewrite into one calculator dropped it, and
+       for a while every email arrived without the price. */
+    if (!all.anyPriced && all.anyCustom) {
+      writeEstimate(CUSTOM);
+    } else if (all.low === 0 && all.high === 0) {
+      writeEstimate('');
+    } else {
+      writeEstimate(window.FPCarpet.formatRange(all) + ' ' + (PRICING.currency || 'CAD') +
+        (startsAt(all) ? ', starting at' : '') +
+        (all.anyCustom ? ', plus items quoted separately' : ''));
+    }
 
     // headline
     if (priceEl) {
@@ -340,6 +356,11 @@
   }
 
   /* everything the customer chose, handed to the quote form */
+  function writeEstimate(text) {
+    var f = document.getElementById('quote-estimate');
+    if (f) f.value = text;
+  }
+
   function writeDetail(s, all) {
     var field = $('#quote-detail-field');
     if (!field) return;

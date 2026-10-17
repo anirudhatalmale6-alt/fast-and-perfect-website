@@ -1845,3 +1845,31 @@ ul.trust-row { list-style: none; margin: 0; padding-left: 0; padding-top: 1.6rem
     width: calc((100% - clamp(1.1rem, 2vw, 1.6rem)) / 2);
   }
 }
+
+
+/* Cookie consent notice. Shown only when tracking IDs are configured, and
+   only until the visitor chooses. Deliberately NOT ".consent": that class is
+   the "I agree to be contacted" checkbox label on every form. Sits above the
+   sticky call bar on mobile so it never covers Call / Text / Quote. */
+.cookie-notice {
+  position: fixed;
+  left: 16px; right: 16px; bottom: 16px;
+  z-index: 200;
+  max-width: 560px;
+  margin-inline: auto;
+  display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  padding: 16px 18px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  font-size: .92rem; line-height: 1.45;
+}
+.cookie-notice[hidden] { display: none !important; }
+.cookie-notice p { margin: 0; flex: 1 1 260px; }
+.cookie-notice__actions { display: flex; gap: 8px; margin-left: auto; }
+.cookie-notice .btn { padding: .55rem 1.05rem; font-size: .9rem; }
+@media (max-width: 960px) {
+  .cookie-notice { bottom: calc(74px + env(safe-area-inset-bottom)); }
+}

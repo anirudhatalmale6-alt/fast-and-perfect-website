@@ -91,6 +91,14 @@ BUSINESS = {
         # address of the place and was verified to resolve to it.
         "google": "https://maps.google.com/?cid=18298990590634894699",
     },
+    # Analytics and ad measurement. Both empty = nothing is added to any page:
+    # no banner, no script, no cookie. Paste the owner's IDs to switch on.
+    #   ga4         Google Analytics 4 Measurement ID, looks like G-XXXXXXXXXX
+    #   meta_pixel  Meta (Facebook/Instagram) Pixel ID, a long number
+    "tracking": {
+        "ga4": "",
+        "meta_pixel": "",
+    },
 }
 
 BUSINESS["areas"] = [BUSINESS["primary_area"]] + BUSINESS["secondary_areas"]
@@ -218,6 +226,46 @@ SOCIAL_ORDER = [
     ("google", "google", "Google Business Profile"),
     ("kijiji", "tag", "Kijiji"),
 ]
+
+
+def tracking_cfg():
+    """The tracking IDs, validated, or None when tracking is off.
+
+    A mistyped ID does not error anywhere: the tag loads, sends to an ID that
+    does not exist, and the owner sees an empty dashboard weeks later. So a
+    malformed ID stops the build instead.
+    """
+    t = BUSINESS.get("tracking") or {}
+    ga4 = (t.get("ga4") or "").strip()
+    px = (t.get("meta_pixel") or "").strip()
+    if ga4 and not re.fullmatch(r"G-[A-Z0-9]{6,14}", ga4):
+        raise SystemExit(f"tracking.ga4 {ga4!r} is not a GA4 Measurement ID (G-XXXXXXXXXX)")
+    if px and not re.fullmatch(r"\d{10,20}", px):
+        raise SystemExit(f"tracking.meta_pixel {px!r} is not a Meta Pixel ID (digits only)")
+    if not ga4 and not px:
+        return None
+    return {"ga4": ga4, "pixel": px}
+
+
+def consent_block():
+    """Config, banner and script. Empty string when tracking is off."""
+    cfg = tracking_cfg()
+    if not cfg:
+        return ""
+    data = json.dumps(cfg)
+    return f"""
+<script id="fp-tracking-config" type="application/json">{data}</script>
+<div class="cookie-notice" id="consent-banner" role="dialog" aria-live="polite"
+     aria-label="Cookie choices" hidden>
+  <p>We would like to use cookies to count visits and to see which of our ads
+  bring in enquiries. Nothing is tracked unless you accept.
+  <a href="privacy.html#cookies">Privacy policy</a></p>
+  <div class="cookie-notice__actions">
+    <button type="button" class="btn btn--ghost" data-consent="decline">Decline</button>
+    <button type="button" class="btn btn--gold" data-consent="accept">Accept</button>
+  </div>
+</div>
+<script src="assets/js/tracking.js" defer></script>"""
 
 
 def socials_html(size=18, style=""):
@@ -378,7 +426,7 @@ def footer():
     <div class="footer-bottom">
       <div>&copy; <span data-year>2026</span> {B['legal_name']}. All rights reserved.</div>
       <nav aria-label="Footer">
-        <a href="privacy.html">Privacy Policy</a>
+        <a href="privacy.html">Privacy Policy</a>{chr(10) + '        <a href="privacy.html#cookies" data-cookie-settings>Cookie settings</a>' if tracking_cfg() else ''}
         <a href="contact.html">Contact</a>
         <a href="book.html">Book Online</a>
       </nav>
@@ -585,7 +633,7 @@ def page(slug, title, description, body, schemas=None, current=None, keywords=No
 {footer()}
 <script src="assets/js/pricing-engine.js" defer></script>
 <script src="assets/js/quote-calculator.js" defer></script>
-<script src="assets/js/main.js" defer></script>{extra}
+<script src="assets/js/main.js" defer></script>{extra}{consent_block()}
 </body>
 </html>
 """
@@ -2754,6 +2802,42 @@ def build_contact():
 
 
 def build_privacy():
+    # The policy must describe what the site ACTUALLY does. Until the owner
+    # supplies tracking IDs it uses none, and says so; once they are set it
+    # names each service, what it receives, and how to change your mind.
+    tc = tracking_cfg() or {}
+    services = []
+    if tc.get("ga4"):
+        services.append("Google Analytics 4 (Google LLC), to count visits and see which "
+                        "pages and sources bring in enquiries")
+    if tc.get("pixel"):
+        services.append("the Meta Pixel (Meta Platforms, Inc.), to see whether a visit or "
+                        "enquiry came from one of our Facebook or Instagram ads")
+    if services:
+        analytics_li = (
+            "<li><b>Website analytics and ad measurement</b> — only if you click "
+            "Accept on the cookie notice: " + "; and ".join(services) + ". They receive "
+            "the pages you visit, roughly where you are, your device type, and whether "
+            "you sent a quote request, booking or message or tapped to call or text. "
+            "They never receive your name, phone number, email or address.</li>")
+        cookies_p = (
+            "<p>Cookies the site needs to work are always on. Analytics and advertising "
+            "cookies are <b>off until you click Accept</b> on the notice shown on your "
+            "first visit, and nothing is sent to Google or Meta before then. You can "
+            "change your choice at any time with <b>Cookie settings</b> at the bottom of "
+            "every page; choosing Decline stops the tracking and deletes the cookies it "
+            "had set. You can also block cookies in your browser; the site will still "
+            "work.</p>")
+    else:
+        analytics_li = (
+            "<li><b>Website analytics</b> — none at present. This site does not use "
+            "analytics or advertising tracking. If that changes, this policy will say "
+            "so and you will be asked first.</li>")
+        cookies_p = (
+            "<p>This site uses only the cookies required for it to work. It does not use "
+            "analytics or advertising cookies. You can block cookies in your browser "
+            "settings; the site will still function.</p>")
+
     body = page_head(
         "Legal",
         "Privacy Policy",
@@ -2778,10 +2862,7 @@ def build_privacy():
         message.</li>
         <li><b>Service records</b> — the work performed at your property, access
         instructions you've provided, and payment records.</li>
-        <li><b>Website analytics</b> — if analytics is enabled, aggregated data about
-        pages visited and how visitors arrived. This does not identify you personally.</li>
-        <li><b>Advertising measurement</b> — if advertising tags are installed, our ad
-        platforms may record that a visit or enquiry came from one of our ads.</li>
+        {analytics_li}
       </ul>
 
       <h2 class="h-md">Why we collect it</h2>
@@ -2818,10 +2899,8 @@ def build_privacy():
       your address. Alarm codes are recorded separately and issued only to the crew
       assigned to your property. You can ask us to return or destroy them at any time.</p>
 
-      <h2 class="h-md">Cookies</h2>
-      <p>This site uses only the cookies required for it to work, plus any analytics or
-      advertising cookies noted above. You can block cookies in your browser settings;
-      the site will still function.</p>
+      <h2 class="h-md" id="cookies">Cookies</h2>
+      {cookies_p}
 
       <h2 class="h-md">Your rights</h2>
       <p>You can ask us what personal information we hold about you, ask for it to be
