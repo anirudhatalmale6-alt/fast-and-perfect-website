@@ -81,6 +81,11 @@
     }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
     /* eslint-enable */
     window.fbq('consent', 'grant');
+    /* Turn off Meta's automatic configuration BEFORE init. Left on, the
+       Pixel scans the page and can log its own Lead and Contact events from
+       form submissions and phone-link taps, which would double-count the
+       ones sent below. Every conversion here is sent deliberately, once. */
+    window.fbq('set', 'autoConfig', false, cfg.pixel);
     window.fbq('init', cfg.pixel);
     window.fbq('track', 'PageView');
   }

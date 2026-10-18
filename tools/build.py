@@ -97,7 +97,7 @@ BUSINESS = {
     #   meta_pixel  Meta (Facebook/Instagram) Pixel ID, a long number
     "tracking": {
         "ga4": "G-YL3K3SGTYX",
-        "meta_pixel": "",
+        "meta_pixel": "1823622235617011",
     },
 }
 

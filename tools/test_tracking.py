@@ -144,6 +144,23 @@ with sync_playwright() as p:
     check("consent mode update = granted", any(len(e)>=3 and e[0]=="consent" and e[1]=="update" and e[2].get("analytics_storage")=="granted" for e in g))
     q=fb(pg)
     check("Pixel init with the ID + PageView", ["init","123456789012345"] in q and ["track","PageView"] in q, q)
+    ac=[i for i,e in enumerate(q) if e[:2]==["set","autoConfig"]]
+    it=[i for i,e in enumerate(q) if e[:1]==["init"]]
+    check("Meta automatic configuration OFF, set BEFORE init (else it adds its own Lead/Contact)",
+          len(ac)==1 and q[ac[0]][2] is False and it and ac[0] < it[0], q)
+    ctx.close()
+
+    print("3b. NO DUPLICATES FROM ACCEPTING TWICE")
+    ctx,pg,hits,errs=ctx_page(); pg.goto(B+"index.html", wait_until="networkidle")
+    pg.click("[data-consent='accept']"); pg.wait_for_timeout(400)
+    pg.click("[data-cookie-settings]"); pg.wait_for_timeout(200)
+    pg.click("[data-consent='accept']"); pg.wait_for_timeout(400)
+    q=fb(pg) or []
+    check("Pixel initialised once", sum(1 for e in q if e[:1]==["init"])==1, q)
+    check("one PageView per page load", sum(1 for e in q if e[:2]==["track","PageView"])==1, q)
+    check("GA4 configured once", sum(1 for e in ga(pg) if e[:1]==["config"])==1)
+    check("gtag.js and fbevents.js each requested once",
+          sum("gtag/js" in h for h in hits)==1 and sum("fbevents.js" in h for h in hits)==1, hits)
     ctx.close()
 
     def accepted(page_url):
@@ -164,7 +181,7 @@ with sync_playwright() as p:
         mode("ok"); fill(pg,fid); pg.click(fid+" button[type=submit]"); pg.wait_for_timeout(1500)
         evs=[e for e in ga_events(pg) if e[1]==ga_name]
         check(f"{page_url}: confirmed send -> GA4 '{ga_name}' once", len(evs)==1, evs)
-        check(f"{page_url}: confirmed send -> Meta '{meta_name}'", any(e[1]==meta_name for e in fb_tracks(pg)), fb_tracks(pg))
+        check(f"{page_url}: confirmed send -> Meta '{meta_name}' exactly once", sum(1 for e in fb_tracks(pg) if e[1]==meta_name)==1, fb_tracks(pg))
         if evs: check(f"{page_url}: form_id param = {fid[1:]}", evs[0][2].get("form_id")==fid[1:], evs[0][2])
         blob=json.dumps(ga(pg))+json.dumps(fb(pg))
         check(f"{page_url}: NO personal data in anything sent", not any(x in blob for x in PII), [x for x in PII if x in blob])
