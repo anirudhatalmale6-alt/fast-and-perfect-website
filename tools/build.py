@@ -96,7 +96,7 @@ BUSINESS = {
     #   ga4         Google Analytics 4 Measurement ID, looks like G-XXXXXXXXXX
     #   meta_pixel  Meta (Facebook/Instagram) Pixel ID, a long number
     "tracking": {
-        "ga4": "",
+        "ga4": "G-YL3K3SGTYX",
         "meta_pixel": "",
     },
 }
@@ -2816,7 +2816,8 @@ def build_privacy():
     if services:
         analytics_li = (
             "<li><b>Website analytics and ad measurement</b> — only if you click "
-            "Accept on the cookie notice: " + "; and ".join(services) + ". They receive "
+            "Accept on the cookie notice: " + "; and ".join(services) + ". " +
+            ("They receive" if len(services) > 1 else "It receives") + " "
             "the pages you visit, roughly where you are, your device type, and whether "
             "you sent a quote request, booking or message or tapped to call or text. "
             "They never receive your name, phone number, email or address.</li>")

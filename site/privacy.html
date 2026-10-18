@@ -84,7 +84,7 @@
         message.</li>
         <li><b>Service records</b> — the work performed at your property, access
         instructions you've provided, and payment records.</li>
-        <li><b>Website analytics</b> — none at present. This site does not use analytics or advertising tracking. If that changes, this policy will say so and you will be asked first.</li>
+        <li><b>Website analytics and ad measurement</b> — only if you click Accept on the cookie notice: Google Analytics 4 (Google LLC), to count visits and see which pages and sources bring in enquiries. It receives the pages you visit, roughly where you are, your device type, and whether you sent a quote request, booking or message or tapped to call or text. They never receive your name, phone number, email or address.</li>
       </ul>
 
       <h2 class="h-md">Why we collect it</h2>
@@ -122,7 +122,7 @@
       assigned to your property. You can ask us to return or destroy them at any time.</p>
 
       <h2 class="h-md" id="cookies">Cookies</h2>
-      <p>This site uses only the cookies required for it to work. It does not use analytics or advertising cookies. You can block cookies in your browser settings; the site will still function.</p>
+      <p>Cookies the site needs to work are always on. Analytics and advertising cookies are <b>off until you click Accept</b> on the notice shown on your first visit, and nothing is sent to Google or Meta before then. You can change your choice at any time with <b>Cookie settings</b> at the bottom of every page; choosing Decline stops the tracking and deletes the cookies it had set. You can also block cookies in your browser; the site will still work.</p>
 
       <h2 class="h-md">Your rights</h2>
       <p>You can ask us what personal information we hold about you, ask for it to be
@@ -177,6 +177,7 @@
       <div>&copy; <span data-year>2026</span> Fast and Perfect Ltd.. All rights reserved.</div>
       <nav aria-label="Footer">
         <a href="privacy.html">Privacy Policy</a>
+        <a href="privacy.html#cookies" data-cookie-settings>Cookie settings</a>
         <a href="contact.html">Contact</a>
         <a href="book.html">Book Online</a>
       </nav>
@@ -192,5 +193,17 @@
 <script src="assets/js/pricing-engine.js" defer></script>
 <script src="assets/js/quote-calculator.js" defer></script>
 <script src="assets/js/main.js" defer></script>
+<script id="fp-tracking-config" type="application/json">{"ga4": "G-YL3K3SGTYX", "pixel": ""}</script>
+<div class="cookie-notice" id="consent-banner" role="dialog" aria-live="polite"
+     aria-label="Cookie choices" hidden>
+  <p>We would like to use cookies to count visits and to see which of our ads
+  bring in enquiries. Nothing is tracked unless you accept.
+  <a href="privacy.html#cookies">Privacy policy</a></p>
+  <div class="cookie-notice__actions">
+    <button type="button" class="btn btn--ghost" data-consent="decline">Decline</button>
+    <button type="button" class="btn btn--gold" data-consent="accept">Accept</button>
+  </div>
+</div>
+<script src="assets/js/tracking.js" defer></script>
 </body>
 </html>

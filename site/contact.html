@@ -240,6 +240,7 @@
       <div>&copy; <span data-year>2026</span> Fast and Perfect Ltd.. All rights reserved.</div>
       <nav aria-label="Footer">
         <a href="privacy.html">Privacy Policy</a>
+        <a href="privacy.html#cookies" data-cookie-settings>Cookie settings</a>
         <a href="contact.html">Contact</a>
         <a href="book.html">Book Online</a>
       </nav>
@@ -255,5 +256,17 @@
 <script src="assets/js/pricing-engine.js" defer></script>
 <script src="assets/js/quote-calculator.js" defer></script>
 <script src="assets/js/main.js" defer></script>
+<script id="fp-tracking-config" type="application/json">{"ga4": "G-YL3K3SGTYX", "pixel": ""}</script>
+<div class="cookie-notice" id="consent-banner" role="dialog" aria-live="polite"
+     aria-label="Cookie choices" hidden>
+  <p>We would like to use cookies to count visits and to see which of our ads
+  bring in enquiries. Nothing is tracked unless you accept.
+  <a href="privacy.html#cookies">Privacy policy</a></p>
+  <div class="cookie-notice__actions">
+    <button type="button" class="btn btn--ghost" data-consent="decline">Decline</button>
+    <button type="button" class="btn btn--gold" data-consent="accept">Accept</button>
+  </div>
+</div>
+<script src="assets/js/tracking.js" defer></script>
 </body>
 </html>
