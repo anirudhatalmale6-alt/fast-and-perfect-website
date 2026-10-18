@@ -95,6 +95,12 @@ BUSINESS = {
     # no banner, no script, no cookie. Paste the owner's IDs to switch on.
     #   ga4         Google Analytics 4 Measurement ID, looks like G-XXXXXXXXXX
     #   meta_pixel  Meta (Facebook/Instagram) Pixel ID, a long number
+    # Ownership-verification tokens for services that check the homepage.
+    # Meta Business: Brand safety > Domains > fastandperfect.ca. Leaving a
+    # token in place after verifying is required: Meta re-checks it.
+    "verification": {
+        "facebook": "0x4p7xy8bpvcht13p4ohosadzi41kb",
+    },
     "tracking": {
         "ga4": "G-YL3K3SGTYX",
         "meta_pixel": "1823622235617011",
@@ -226,6 +232,16 @@ SOCIAL_ORDER = [
     ("google", "google", "Google Business Profile"),
     ("kijiji", "tag", "Kijiji"),
 ]
+
+
+def verification_meta():
+    """Domain-verification meta tags, on every page (Meta checks the homepage)."""
+    v = (BUSINESS.get("verification") or {}).get("facebook", "").strip()
+    if not v:
+        return ""
+    if not re.fullmatch(r"[a-z0-9]{20,40}", v):
+        raise SystemExit(f"verification.facebook {v!r} does not look like a Meta token")
+    return f'\n<meta name="facebook-domain-verification" content="{v}">'
 
 
 def tracking_cfg():
@@ -622,7 +638,7 @@ def page(slug, title, description, body, schemas=None, current=None, keywords=No
 <link rel="apple-touch-icon" href="assets/img/logo-icon.png">
 <link rel="preload" href="assets/fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/karla-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="assets/css/main.css">
+<link rel="stylesheet" href="assets/css/main.css">{verification_meta()}
 {blocks}
 </head>
 <body>
